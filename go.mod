@@ -1,3 +1,3 @@
-module github.com/vupdivup/typing
+module github.com/vupdivup/refprose
 
 go 1.25.4
