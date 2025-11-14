@@ -46,8 +46,9 @@ func Tokenize(s string) []string { // TODO: lazy iterator
 	flush := func() {
 		if len(currentToken) > 0 && isTokenValid(currentToken) {
 			tokens = append(tokens, string(currentToken))
-			currentToken = []rune{}
 		}
+				
+		currentToken = []rune{}
 	}
 
 	for _, r := range s {
