@@ -3,6 +3,15 @@ package tokenizer
 
 import (
 	"slices"
+	"unicode"
+	"strings"
+)
+
+type Case int
+
+const (
+	CaseLower Case = iota
+	CaseUpper
 )
 
 var tokenDelimiters = []rune{
@@ -25,6 +34,41 @@ var alphabetRunes = []rune{
 	'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 }
 
+func getRuneCase(r rune) Case {
+	if unicode.IsUpper(r) {
+		return CaseUpper
+	}
+	return CaseLower
+}
+
+
+// splitMixedCaseWord splits a mixed-case identifier into its subtokens.
+// For example, "CamelCaseWord" becomes "Camel", "Case", "Word".
+// Acronyms are not handled specially; "JSONData" becomes "J", "S", "O", "N",
+// "Data".
+func splitMixedCaseWord(word []rune) [][]rune {
+	var result [][]rune
+	var currentToken []rune
+
+	flush := func() {
+		if len(currentToken) > 0 {
+			result = append(result, currentToken)
+			currentToken = []rune{}
+		}
+	}
+
+	for i, r := range word {
+		if i != 0 && getRuneCase(r) == CaseUpper {
+			flush()
+		}
+
+		currentToken = append(currentToken, r)
+	}
+
+	flush()
+	return result
+}
+
 // isTokenValid checks if all runes in the token are part of the allowed
 // character set.
 func isTokenValid(token []rune) bool {
@@ -39,13 +83,15 @@ func isTokenValid(token []rune) bool {
 // Tokenize splits an input string into word tokens.
 // It can handle natural language text as well as source code.
 // Tokens containing non-ASCII characters are filtered out.
-func Tokenize(s string) []string { // TODO: lazy iterator
+func Tokenize(s string) []string {
 	var tokens []string
 	var currentToken []rune
 
 	flush := func() {
 		if len(currentToken) > 0 && isTokenValid(currentToken) {
-			tokens = append(tokens, string(currentToken))
+			for _, subtoken := range splitMixedCaseWord(currentToken) {
+				tokens = append(tokens, strings.ToLower(string(subtoken)))
+			}
 		}
 				
 		currentToken = []rune{}
