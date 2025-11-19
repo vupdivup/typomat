@@ -25,3 +25,28 @@ func TestWPM(t *testing.T) {
 		}
 	}
 }
+
+func TestAccuracy(t *testing.T) {
+	cases := []struct {
+		prompt string
+		input  string
+		want   float64
+	}{
+		{"", "", 100.0},
+		{"abcde", "fghij", 0.0},
+		{"abcde", "abcde", 100.0},
+		{"abcde", "abcdf", 80.0},
+		{"   abcde  ", "  abfde   ", 40.0},
+		{"abcd", "abc", 75.0},
+	}
+
+	for _, c := range cases {
+		got := Accuracy(c.prompt, c.input)
+		if got != c.want {
+			t.Errorf(
+				"Accuracy(%q, %q) = %v; want %v",
+				c.prompt, c.input, got, c.want,
+			)
+		}
+	}
+}
