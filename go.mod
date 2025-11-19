@@ -1,4 +1,4 @@
-module github.com/vupdivup/refprose
+module github.com/vupdivup/recital
 
 go 1.25.4
 
