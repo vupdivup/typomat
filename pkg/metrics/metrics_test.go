@@ -32,12 +32,24 @@ func TestAccuracy(t *testing.T) {
 		input  string
 		want   float64
 	}{
+		// empty prompt & input
 		{"", "", 100.0},
+		// completely wrong
 		{"abcde", "fghij", 0.0},
-		{"abcde", "abcde", 100.0},
+		// perfect match
+		{"hello", "hello", 100.0},
+		// single mismatch (4/5 correct)
+		{"hello", "hxllo", 80.0},
+		// three mismatches (7/10 correct)
+		{"abcdefghij", "abc123ghij", 70.0},
+		// input shorter (first 5 all correct)
+		{"abcdefghij", "abcde", 100.0},
+		// input longer (only first 5 measured)
+		{"abcde", "abcdeZZZZ", 100.0},
+		// last char mismatch
 		{"abcde", "abcdf", 80.0},
-		{"   abcde  ", "  abfde   ", 40.0},
-		{"abcd", "abc", 75.0},
+		// unicode with one mismatch (3/4 correct)
+		{"你好世界", "你好世X", 75.0},
 	}
 
 	for _, c := range cases {

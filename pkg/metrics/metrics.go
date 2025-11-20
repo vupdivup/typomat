@@ -25,17 +25,20 @@ func WPM(input string, time time.Duration) float64 {
 // Accuracy calculates the typing accuracy as a percentage based on the prompt
 // and the user's input.
 func Accuracy(prompt, input string) float64 {
-	if len(prompt) == 0 {
-		return 100.0
-	}
-
 	numCorrect := 0
+	promptRunes := []rune(prompt)
+	inputRunes := []rune(input)
+	numMeasured := min(len(promptRunes), len(inputRunes))
 
-	for i, r := range prompt {
-		if i < len(input) && r == rune(input[i]) {
+	for i := range numMeasured {
+		if promptRunes[i] == inputRunes[i] {
 			numCorrect++
 		}
 	}
 
-	return float64(numCorrect) / float64(len(prompt)) * 100.0
+	if numMeasured == 0 {
+		return 100.0
+	}
+
+	return float64(numCorrect) / float64(numMeasured) * 100.0
 }
