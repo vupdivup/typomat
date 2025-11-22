@@ -3,8 +3,10 @@ package tokenizer
 
 import (
 	"slices"
-	"unicode"
 	"strings"
+	"unicode"
+
+	"github.com/vupdivup/recital/pkg/alphabet"
 )
 
 type Case int
@@ -27,20 +29,12 @@ var tokenDelimiters = []rune{
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
-var alphabetRunes = []rune{
-	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-	'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-}
-
 func getRuneCase(r rune) Case {
 	if unicode.IsUpper(r) {
 		return CaseUpper
 	}
 	return CaseLower
 }
-
 
 // splitMixedCaseWord splits a mixed-case identifier into its subtokens.
 // For example, "CamelCaseWord" becomes "Camel", "Case", "Word".
@@ -73,7 +67,7 @@ func splitMixedCaseWord(word []rune) [][]rune {
 // character set.
 func isTokenValid(token []rune) bool {
 	for _, r := range token {
-		if !slices.Contains(alphabetRunes, r) {
+		if !slices.Contains(alphabet.AllRunes, r) {
 			return false
 		}
 	}
@@ -93,7 +87,7 @@ func Tokenize(s string) []string {
 				tokens = append(tokens, strings.ToLower(string(subtoken)))
 			}
 		}
-				
+
 		currentToken = []rune{}
 	}
 
