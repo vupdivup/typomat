@@ -29,9 +29,9 @@ func getGitignore(repoPath string) (string, error) {
 // Note that the target directory is scanned regardless of whether it contains a
 // .git subdirectory. This means LsFiles returns files for any directory, not
 // just Git repositories.
-func LsFiles(repoPath string) ([]string, error) {
+func LsFiles(rootPath string) ([]string, error) {
 	// Check for .gitignore file
-	gitignorePath, err := getGitignore(repoPath)
+	gitignorePath, err := getGitignore(rootPath)
 	hasGitignore := err == nil
 
 	// Compile .gitignore if it exists
@@ -53,14 +53,14 @@ func LsFiles(repoPath string) ([]string, error) {
 		if d.IsDir() && d.Name() == ".git" {
 			return filepath.SkipDir
 		} else if !d.IsDir() {
-			relPath, err := filepath.Rel(repoPath, path)
+			relPath, err := filepath.Rel(rootPath, path)
 			if err != nil {
 				return err
 			}
 
 			if !hasGitignore || !gitignore.MatchesPath(relPath) {
 				// Append absolute path
-				absPath, err := filepath.Abs(filepath.Join(repoPath, relPath))
+				absPath, err := filepath.Abs(filepath.Join(rootPath, relPath))
 				if err != nil {
 					return err
 				}
@@ -72,7 +72,7 @@ func LsFiles(repoPath string) ([]string, error) {
 	}
 
 	// Walk the repository directory
-	err = filepath.WalkDir(repoPath, walk)
+	err = filepath.WalkDir(rootPath, walk)
 	if err != nil {
 		return nil, err
 	}
