@@ -16,7 +16,6 @@ func IsTextFile(path string) (bool, error) {
 	lookahead := 512
 
 	file, err := os.Open(path)
-
 	if err != nil {
 		return false, err
 	}
