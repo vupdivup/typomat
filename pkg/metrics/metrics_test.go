@@ -3,6 +3,8 @@ package metrics
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWPM(t *testing.T) {
@@ -18,11 +20,7 @@ func TestWPM(t *testing.T) {
 
 	for _, c := range cases {
 		got := WPM(c.input, c.duration)
-		if got != c.want {
-			t.Errorf(
-				"WPM(%q, %v) = %v; want %v", c.input, c.duration, got, c.want,
-			)
-		}
+		assert.Equal(t, c.want, got)
 	}
 }
 
@@ -54,11 +52,6 @@ func TestAccuracy(t *testing.T) {
 
 	for _, c := range cases {
 		got := Accuracy(c.prompt, c.input)
-		if got != c.want {
-			t.Errorf(
-				"Accuracy(%q, %q) = %v; want %v",
-				c.prompt, c.input, got, c.want,
-			)
-		}
+		assert.Equal(t, c.want, got)
 	}
 }
