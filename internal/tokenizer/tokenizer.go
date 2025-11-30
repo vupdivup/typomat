@@ -23,7 +23,7 @@ var tokenDelimiters = []rune{
 
 	// Punctuation marks used in text and code
 	'.', ',', '!', '?', ';', ':', '(', ')', '[', ']', '{', '}', '"', '\'', '-',
-	'_',
+	'_', '/', '<', '>', '@', '`',
 
 	// Alphanumeric characters
 	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
