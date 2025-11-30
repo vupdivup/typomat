@@ -53,7 +53,6 @@ func TestGetFilesInTree(t *testing.T) {
 		}
 
 		got, err := GetFilesInTree(absRootDir)
-
 		if err != nil {
 			t.Error(err.Error())
 			continue
