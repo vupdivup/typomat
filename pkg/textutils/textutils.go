@@ -1,5 +1,5 @@
 // Package stringutils provides utility functions for string manipulation.
-package stringutils
+package textutils
 
 // Wrap splits the input string into lines not exceeding the specified line
 // width, using a custom word separator rune.
@@ -16,11 +16,11 @@ func Wrap(s string, lineWidth int, space rune) []string {
 	wordStart := 0
 
 	for i, r := range runes {
-		if r == space || i == len(runes) - 1 {
+		if r == space || i == len(runes)-1 {
 			// Get the current word including the separator
-			word := runes[wordStart:i + 1]
+			word := runes[wordStart : i+1]
 
-			if curLine != "" && curLineLen + len(word) > lineWidth {
+			if curLine != "" && curLineLen+len(word) > lineWidth {
 				// Current line full, start new line
 				lines = append(lines, curLine)
 				curLine = string(word)
