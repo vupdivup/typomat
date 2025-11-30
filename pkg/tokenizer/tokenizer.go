@@ -2,6 +2,9 @@
 package tokenizer
 
 import (
+	"bufio"
+	"io"
+	"os"
 	"slices"
 	"strings"
 	"unicode"
@@ -41,6 +44,7 @@ func getRuneCase(r rune) Case {
 // Acronyms are not handled specially; "JSONData" becomes "J", "S", "O", "N",
 // "Data".
 func splitMixedCaseWord(word []rune) [][]rune {
+	// TODO: Handle acronyms specially
 	var result [][]rune
 	var currentToken []rune
 
@@ -74,10 +78,10 @@ func isTokenValid(token []rune) bool {
 	return true
 }
 
-// Tokenize splits an input string into word tokens.
+// TokenizeString splits an input string into word tokens.
 // It can handle natural language text as well as source code.
 // Tokens containing non-ASCII characters are filtered out.
-func Tokenize(s string) []string {
+func TokenizeString(s string) []string {
 	var tokens []string
 	var currentToken []rune
 
@@ -103,4 +107,33 @@ func Tokenize(s string) []string {
 
 	flush()
 	return tokens
+}
+
+// TokenizeFile reads a file and returns its tokens. File contents are read
+// line by line to handle large files efficiently.
+// See TokenizeString for tokenization details.
+func TokenizeFile(path string) ([]string, error) {
+	tokens := []string{}
+	
+	// Open the file for reading
+	file, err := os.Open(path)
+	if err != nil {
+		return tokens, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	for {
+		// Read and tokenize each line
+		line, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return tokens, err
+		}
+		lineTokens := TokenizeString(line)
+		tokens = append(tokens, lineTokens...)
+	}
+
+	return tokens, nil
 }
