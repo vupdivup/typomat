@@ -1,6 +1,8 @@
 package fileutils
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"os"
 	"path/filepath"
@@ -58,4 +60,21 @@ func GetFilesInTree(root string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+// GetFingerprint computes the SHA-256 fingerprint of the file at the given
+// path.
+func GetFingerprint(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
