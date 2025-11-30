@@ -3,6 +3,7 @@ package fileutils
 import (
 	"path/filepath"
 	"testing"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsTextFile(t *testing.T) {
@@ -18,19 +19,12 @@ func TestIsTextFile(t *testing.T) {
 	}
 	for _, c := range cases {
 		absPath, err := filepath.Abs(filepath.Join(basePath, c.path))
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
-		got, err := IsTextFile(absPath)
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
+		assert.NoError(t, err)
 
-		if got != c.want {
-			t.Errorf("IsTextFile(%q) = %v; want %v", absPath, got, c.want)
-		}
+		got, err := IsTextFile(absPath)
+		assert.NoError(t, err)
+
+		assert.Equal(t, c.want, got)
 	}
 }
 
@@ -47,28 +41,17 @@ func TestGetFilesInTree(t *testing.T) {
 
 	for _, c := range cases {
 		absRootDir, err := filepath.Abs(filepath.Join(basePath, c.rootDir))
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
+		assert.NoError(t, err)
 
 		got, err := GetFilesInTree(absRootDir)
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
+		assert.NoError(t, err)
 
 		for i := range got {
 			// Construct the expected absolute path for comparison
 			wantAbsPath := filepath.Join(absRootDir, c.want[i])
 
 			// Compare the obtained path with the expected absolute path
-			if got[i] != wantAbsPath {
-				t.Errorf(
-					"GetFilesInTree(%q) = %v; want %v",
-					absRootDir, got, wantAbsPath,
-				)
-			}
+			assert.Equal(t, got[i], wantAbsPath)
 		}
 	}
 }
@@ -86,19 +69,11 @@ func TestGetFingerprint(t *testing.T) {
 
 	for _, c := range cases {
 		absPath, err := filepath.Abs(filepath.Join(basePath, c.path))
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
+		assert.NoError(t, err)
 
 		got, err := GetFingerprint(absPath)
-		if err != nil {
-			t.Error(err.Error())
-			continue
-		}
+		assert.NoError(t, err)
 
-		if got != c.want {
-			t.Errorf("GetFingerprint(%q) = %v; want %v", absPath, got, c.want)
-		}
+		assert.Equal(t, c.want, got)
 	}
 }
