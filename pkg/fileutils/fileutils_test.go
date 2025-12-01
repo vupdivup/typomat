@@ -3,6 +3,7 @@ package fileutils
 import (
 	"path/filepath"
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,34 +26,6 @@ func TestIsTextFile(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, c.want, got)
-	}
-}
-
-func TestGetFilesInTree(t *testing.T) {
-	basePath := "./../../test/data/fileutils/get_files_in_tree"
-	cases := []struct {
-		rootDir string
-		want    []string
-	}{
-		{"empty", []string{}},
-		{"flat", []string{"0.txt", "1.txt", "2.txt"}},
-		{"nested", []string{"0.txt", "subdir/1.txt", "subdir/subsubdir/2.txt"}},
-	}
-
-	for _, c := range cases {
-		absRootDir, err := filepath.Abs(filepath.Join(basePath, c.rootDir))
-		assert.NoError(t, err)
-
-		got, err := GetFilesInTree(absRootDir)
-		assert.NoError(t, err)
-
-		for i := range got {
-			// Construct the expected absolute path for comparison
-			wantAbsPath := filepath.Join(absRootDir, c.want[i])
-
-			// Compare the obtained path with the expected absolute path
-			assert.Equal(t, got[i], wantAbsPath)
-		}
 	}
 }
 

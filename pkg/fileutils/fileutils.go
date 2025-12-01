@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
-	"path/filepath"
 	"unicode/utf8"
 )
 
@@ -33,32 +32,6 @@ func IsTextFile(path string) (bool, error) {
 	}
 
 	return utf8.Valid(buf), nil
-}
-
-// GetFilesInTree returns a list of all files in the directory tree rooted at
-// the specified path.
-// Files are returned as their absolute paths.
-func GetFilesInTree(root string) ([]string, error) {
-	var files []string
-
-	walk := func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !d.IsDir() {
-			files = append(files, path)
-		}
-
-		return nil
-	}
-
-	err := filepath.WalkDir(root, walk)
-	if err != nil {
-		return nil, err
-	}
-
-	return files, nil
 }
 
 // GetFingerprint computes the SHA-256 fingerprint of the file at the given
