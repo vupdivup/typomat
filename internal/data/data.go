@@ -67,6 +67,16 @@ func UpsertFiles(dbId string, files []File) error {
 		CreateInBatches(files, batchSize).Error
 }
 
+// DeleteFiles removes file records from a database.
+func DeleteFiles(dbId string, files []File) error {
+	db, err := openDb(dbId)
+	if err != nil {
+		return err
+	}
+
+	return db.Delete(files).Error
+}
+
 // GetTokens returns an iterator over distinct tokens in the database.
 func GetTokens(dbId string) iter.Seq2[Token, error] {
 	return func(yield func(Token, error) bool) {
@@ -94,6 +104,18 @@ func GetTokens(dbId string) iter.Seq2[Token, error] {
 			}
 		}
 	}
+}
+
+// GetFiles retrieves all file records from the database.
+func GetFiles(dbId string) ([]File, error) {
+	db, err := openDb(dbId)
+	if err != nil {
+		return []File{}, err
+	}
+
+	var files []File
+	result := db.Find(&files);
+	return files, result.Error
 }
 
 // openDb opens (or creates) a database with the given identifier.
