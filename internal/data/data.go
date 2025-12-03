@@ -67,14 +67,28 @@ func UpsertFiles(dbId string, files []File) error {
 		CreateInBatches(files, batchSize).Error
 }
 
-// DeleteFiles removes file records from a database.
-func DeleteFiles(dbId string, files []File) error {
+// DeleteFile removes a file record from the database, optionally cascading
+// the deletion to associated tokens.
+func DeleteFile(dbId string, file File, cascade bool) error {
+	// Open the database
 	db, err := openDb(dbId)
 	if err != nil {
 		return err
 	}
 
-	return db.Delete(files).Error
+	// Delete the file record
+	if err := db.Delete(&file).Error; !cascade || err != nil {
+		return err
+	}
+
+	// Cascade delete associated tokens
+	if err := db.
+		Where("path = ?", file.Path).
+		Delete(&Token{}).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetTokens returns an iterator over distinct tokens in the database.
@@ -114,7 +128,7 @@ func GetFiles(dbId string) ([]File, error) {
 	}
 
 	var files []File
-	result := db.Find(&files);
+	result := db.Find(&files)
 	return files, result.Error
 }
 
