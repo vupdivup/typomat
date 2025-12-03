@@ -91,8 +91,8 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 	return nil
 }
 
-// GetTokens returns an iterator over distinct tokens in the database.
-func GetTokens(dbId string) iter.Seq2[Token, error] {
+// IterUniqueTokens returns an iterator over distinct tokens in the database.
+func IterUniqueTokens(dbId string) iter.Seq2[Token, error] {
 	return func(yield func(Token, error) bool) {
 		db, err := openDb(dbId)
 		if err != nil {
@@ -151,6 +151,7 @@ func openDb(id string) (*gorm.DB, error) {
 	}
 
 	// Perform migrations
+	// TODO: delete if error
 	if err := db.AutoMigrate(&Token{}); err != nil {
 		return nil, err
 	}
