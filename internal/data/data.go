@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"iter"
+	"path/filepath"
 	"time"
 
+	"github.com/vupdivup/recital/internal/config"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -144,8 +146,12 @@ func openDb(id string) (*gorm.DB, error) {
 	h.Write([]byte(id))
 	hashedId := hex.EncodeToString(h.Sum(nil))
 
+	// Determine the database file path
+	dbPath := filepath.Join(config.DbDir(), hashedId+".db")
+	println(dbPath)
+
 	// Open (or create) the SQLite database
-	db, err := gorm.Open(sqlite.Open(hashedId+".db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
