@@ -130,7 +130,7 @@ func tokenizeDirectory(dirPath string) error {
 			filesToUpsert, data.File{Path: filepath, Fingerprint: fingerprint})
 
 		// Tokenize file
-		fileTokens, err := tokenizer.TokenizeFile(filepath)
+		fileTokens, err := tokenizer.TokenizeFile(filepath, nil)
 		if err != nil {
 			return err
 		}
