@@ -13,7 +13,10 @@ import (
 	"github.com/vupdivup/recital/pkg/tokenizer"
 )
 
-var hasTokenized bool = false
+var (
+	dbId         string
+	hasTokenized bool = false
+)
 
 const (
 	maxFileSize = 1_000_000 // 1 MB
@@ -32,6 +35,7 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	dbId = absPath
 
 	if !hasTokenized {
 		// Tokenize directory if not done already (1st call)
@@ -50,14 +54,14 @@ func tokenizeDirectory(dirPath string) error {
 	tokens := []data.Token{}
 	filesToUpsert := []data.File{}
 
-	dbFiles2, err := data.GetFiles("foo")
+	dbFilesTmp, err := data.GetFiles(dbId)
 	if err != nil {
 		return err
 	}
 
 	dbFiles := map[string]data.File{}
 	filesToRemove := map[string]data.File{}
-	for _, dbFile := range dbFiles2 {
+	for _, dbFile := range dbFilesTmp {
 		dbFiles[dbFile.Path] = dbFile
 		filesToRemove[dbFile.Path] = dbFile
 	}
@@ -67,13 +71,13 @@ func tokenizeDirectory(dirPath string) error {
 		// token sets
 		for _, file := range filesToUpsert {
 			log.Printf("Updating tokens for file: %s", file.Path)
-			if err := data.DeleteFile("foo", file, true); err != nil {
+			if err := data.DeleteFile(dbId, file, true); err != nil {
 				return err
 			}
 		}
 
 		// (Re-)upload files previously deleted
-		if err := data.UpsertFiles("foo", filesToUpsert); err != nil {
+		if err := data.UpsertFiles(dbId, filesToUpsert); err != nil {
 			return err
 		}
 
@@ -81,7 +85,7 @@ func tokenizeDirectory(dirPath string) error {
 			return nil
 		}
 
-		if err := data.UpsertTokens("foo", tokens); err != nil {
+		if err := data.UpsertTokens(dbId, tokens); err != nil {
 			return err
 		}
 
@@ -156,7 +160,7 @@ func tokenizeDirectory(dirPath string) error {
 	// Delete tokens and entries of files that don't exist anymore
 	for _, file := range filesToRemove {
 		log.Printf("Deleting removed file: %s", file.Path)
-		if err := data.DeleteFile("foo", file, true); err != nil {
+		if err := data.DeleteFile(dbId, file, true); err != nil {
 			return err
 		}
 	}
@@ -198,7 +202,7 @@ func generatePrompt(maxChars int) (string, error) {
 // getRandomToken returns a random token from the database using reservoir
 // sampling.
 func getRandomToken() (string, error) {
-	iter := data.IterUniqueTokens("foo")
+	iter := data.IterUniqueTokens(dbId)
 	token := ""
 	i := 0
 
