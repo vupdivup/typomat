@@ -24,6 +24,8 @@ const (
 	minTokenLen = 2
 	maxTokenLen = 12
 
+	maxWordLen = 24
+
 	tokenBufferSize = 10000
 )
 
@@ -130,7 +132,7 @@ func tokenizeDirectory(dirPath string) error {
 			filesToUpsert, data.File{Path: filepath, Fingerprint: fingerprint})
 
 		// Tokenize file
-		fileTokens, err := tokenizer.TokenizeFile(filepath, nil)
+		fileTokens, err := tokenizer.TokenizeFile(filepath, isWordEligible)
 		if err != nil {
 			return err
 		}
@@ -241,4 +243,10 @@ func isFileEligible(fpath string) (bool, error) {
 func isTokenEligible(token string) bool {
 	runes := []rune(token)
 	return minTokenLen < len(runes) && len(runes) < maxTokenLen
+}
+
+// isWordEligible returns true if the word should be included for tokenization.
+func isWordEligible(word string) bool {
+	runes := []rune(word)
+	return len(runes) < maxWordLen
 }
