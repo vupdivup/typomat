@@ -45,9 +45,10 @@ func init() {
 		panic(err)
 	}
 
-	logFileName := time.Now().UTC().Format("20060102_150405") + ".log"
+	logFileName := time.Now().Format("20060102_150405") + ".log"
 	logPath = filepath.Join(logDir, logFileName)
-	logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	logFile, err = os.OpenFile(
+		logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		panic(err)
 	}
