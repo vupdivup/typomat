@@ -82,8 +82,8 @@ type model struct {
 	wpm int
 	// accuracy is the current typing accuracy.
 	accuracy int
+	
 	// help is the help view model.
-
 	help help.Model
 	// spinner is the loading spinner view model.
 	spinner spinner.Model
