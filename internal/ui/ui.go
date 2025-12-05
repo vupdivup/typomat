@@ -25,6 +25,10 @@ const (
 	promptWidth        = windowContentWidth - 2*3
 )
 
+const (
+	promptPoolSize = 3
+)
+
 var (
 	// Styles
 	windowStyle = lipgloss.NewStyle().
@@ -76,13 +80,16 @@ type model struct {
 	// mistakes records the positions of mistakes made.
 	mistakes map[int]bool
 
+	// promptPool holds pre-fetched prompts.
+	promptPool []string
+
 	// startTime is the time when the typing session started.
 	startTime time.Time
 	// wpm is the current words per minute.
 	wpm int
 	// accuracy is the current typing accuracy.
 	accuracy int
-	
+
 	// help is the help view model.
 	help help.Model
 	// spinner is the loading spinner view model.
@@ -208,15 +215,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			switch {
 			case key.Matches(msg, breakKeys.Restart):
-				m.state = StateLoading
-				return m, tea.Batch(promptCmd(m), m.spinner.Tick)
+				// Check if more prompts are available
+				if len(m.promptPool) == 0 {
+					m.state = StateLoading
+					return m, m.spinner.Tick
+				}
+
+				// Load next prompt from pool
+				m.ready(m.promptPool[0])
+				m.promptPool = m.promptPool[1:]
+				return m, promptCmd(m)
+
 			case key.Matches(msg, breakKeys.Quit):
 				return m, tea.Quit
 			}
 		}
 
 	case promptMsg:
-		m.ready(string(msg))
+		if m.state == StateLoading {
+			m.ready(string(msg))
+		} else {
+			m.promptPool = append(m.promptPool, string(msg))
+		}
+
+		// Fetch more prompts if pool is low
+		if len(m.promptPool) < promptPoolSize {
+			return m, promptCmd(m)
+		}
 		return m, nil
 
 	case spinner.TickMsg:
