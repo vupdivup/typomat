@@ -18,6 +18,9 @@ func WPM(input string, time time.Duration) float64 {
 	}
 
 	minutes := time.Minutes()
+	if minutes == 0 {
+		return 0.0
+	}
 
 	return float64(numChars) / 5.0 / minutes
 }

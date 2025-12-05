@@ -1,0 +1,129 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/vupdivup/recital/pkg/textutils"
+)
+
+// renderTitleBar renders the title bar of the application.
+func renderTitleBar() string {
+	left := mutedStyle.Render("╭" + "──")
+
+	// The title 'sits' on the upper border line
+	title := accentStyle.Render(" Recital ")
+
+	restWidth := width - lipgloss.Width(left) - lipgloss.Width(title)
+	right := mutedStyle.Render(strings.Repeat("─", restWidth-1) + "╮")
+
+	return left + title + right
+}
+
+// renderHelp renders the help view based on the current mode.
+func renderHelp(m model) string {
+	var keyMap help.KeyMap
+
+	if m.state == StateSession || m.state == StateReady {
+		m.help.Styles.ShortDesc = mutedStyle
+		keyMap = sessionKeys
+	} else {
+		m.help.Styles.ShortDesc = bodyStyle
+		keyMap = breakKeys
+	}
+	return m.help.View(keyMap)
+}
+
+// renderStats renders the typing statistics.
+func renderStats(m model) string {
+	var labelStyle lipgloss.Style
+
+	if m.state == StateSession || m.state == StateReady {
+		labelStyle = mutedStyle
+	} else {
+		labelStyle = bodyStyle
+	}
+
+	wpmStr := fmt.Sprintf("%d", int(m.wpm))
+	accStr := fmt.Sprintf("%d%%", int(m.accuracy))
+
+	return accentStyle.Render(wpmStr) +
+		labelStyle.Render(" WPM") +
+		bodyStyle.Render(" • ") +
+		accentStyle.Render(accStr) +
+		labelStyle.Render(" ACC")
+}
+
+// renderStatusBar renders the status bar with help and stats.
+func renderStatusBar(m model) string {
+	if m.state == StateLoading {
+		return ""
+	}
+
+	help := renderHelp(m)
+	stats := renderStats(m)
+
+	space := windowContentWidth - lipgloss.Width(help) - lipgloss.Width(stats)
+	return help + lipgloss.NewStyle().Width(space).Render("") + stats
+}
+
+// renderPrompt renders the prompt with appropriate styles.
+func renderPrompt(m model) string {
+	// If loading, show spinner
+	if m.state == StateLoading {
+		return promptStyle.Render(m.spinner.View() +
+			bodyStyle.Render(" Loading..."))
+	}
+
+	render := ""
+
+	promptLines := textutils.Wrap(m.prompt, promptWidth, ' ')
+	inputRunes := []rune(m.input)
+	pos := 0
+
+	for lineIdx, line := range promptLines {
+		for _, promptChar := range line {
+			var style lipgloss.Style
+
+			if pos == m.cursor {
+				style = bodyStyle.Underline(true)
+			} else if promptChar == ' ' {
+				style = mutedStyle
+			} else if m.cursor < pos {
+				style = bodyStyle
+			} else if promptChar != inputRunes[pos] {
+				style = errorStyle
+			} else if m.mistakes[pos] {
+				style = accentStyle
+			} else {
+				style = mutedStyle
+			}
+
+			if promptChar == ' ' {
+				promptChar = '·'
+			}
+
+			render += style.Inline(true).Render(string(promptChar))
+			pos++
+		}
+
+		if lineIdx < len(promptLines)-1 {
+			render += "\n"
+		}
+	}
+
+	return promptStyle.Render(render)
+}
+
+// renderWindow renders the main application window.
+func renderWindow(m model) string {
+	return windowStyle.Render(
+		renderPrompt(m) + "\n" + renderStatusBar(m))
+}
+
+// renderApp renders the entire application UI.
+func renderApp(m model) string {
+	return renderTitleBar() + "\n" + renderWindow(m) + "\n"
+}
