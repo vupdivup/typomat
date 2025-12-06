@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"log"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/vupdivup/recital/pkg/fileutils"
 	"github.com/vupdivup/recital/pkg/git"
 	"github.com/vupdivup/recital/pkg/tokenizer"
+	"go.uber.org/zap"
 )
 
 var (
@@ -32,9 +32,16 @@ const (
 // Prompt generates a prompt of the maximum specified character length
 // from tokens of the specified directory.
 func Prompt(dirPath string, maxLen int) (string, error) {
+	zap.S().Infow("Generating prompt from directory text content",
+		"dir_path", dirPath,
+		"max_len", maxLen)
+
 	// Normalize path
 	absPath, err := filepath.Abs(dirPath)
 	if err != nil {
+		zap.S().Errorw("Failed to get absolute path",
+			"dir_path", dirPath,
+			"error", err)
 		return "", err
 	}
 	dbId = absPath
@@ -72,7 +79,9 @@ func tokenizeDirectory(dirPath string) error {
 		// Delete tokens and file entries for changed or new files to purge
 		// token sets
 		for _, file := range filesToUpsert {
-			log.Printf("Updating tokens for file: %s", file.Path)
+			// TODO: don't delete if new
+			zap.S().Infow("Updating tokens for file",
+				"file_path", file.Path)
 			if err := data.DeleteFile(dbId, file, true); err != nil {
 				return err
 			}
@@ -107,7 +116,8 @@ func tokenizeDirectory(dirPath string) error {
 		if isDesired, err := isFileEligible(filepath); err != nil {
 			return err
 		} else if !isDesired {
-			log.Printf("Skipping ineligible file: %s", filepath)
+			zap.S().Infow("Skipping ineligible file",
+				"file_path", filepath)
 			continue
 		}
 
@@ -122,7 +132,8 @@ func tokenizeDirectory(dirPath string) error {
 
 			if dbFile.Fingerprint == fingerprint {
 				// File unchanged, skip tokenization
-				log.Printf("Skipping unchanged file: %s", filepath)
+				zap.S().Infow("Skipping unchanged file",
+					"file_path", filepath)
 				continue
 			}
 		}
@@ -161,7 +172,8 @@ func tokenizeDirectory(dirPath string) error {
 
 	// Delete tokens and entries of files that don't exist anymore
 	for _, file := range filesToRemove {
-		log.Printf("Deleting removed file: %s", file.Path)
+		zap.S().Infow("Deleting removed file from database",
+			"file_path", file.Path)
 		if err := data.DeleteFile(dbId, file, true); err != nil {
 			return err
 		}
