@@ -3,22 +3,24 @@
 package config
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
 	// AppName is the name of the application.
 	AppName = "recital"
+	// ProductName is the product name of the application.
+	ProductName = "Recital"
 )
 
 var (
 	appDir  string
 	dbDir   string
 	logPath string
-	logFile *os.File
 )
 
 func init() {
@@ -45,14 +47,24 @@ func init() {
 		panic(err)
 	}
 
+	// Determine log file path
 	logFileName := time.Now().Format("20060102_150405") + ".log"
 	logPath = filepath.Join(logDir, logFileName)
-	logFile, err = os.OpenFile(
-		logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+
+	// Initialize zap logger
+	var config zap.Config
+	if os.Getenv("DEBUG") == "" {
+		config = zap.NewProductionConfig()
+	} else {
+		config = zap.NewDevelopmentConfig()
+	}
+
+	config.OutputPaths = []string{logPath}
+	logger, err := config.Build()
 	if err != nil {
 		panic(err)
 	}
-	log.SetOutput(logFile)
+	zap.ReplaceGlobals(logger)
 }
 
 // AppDir returns the application directory path.
@@ -68,15 +80,4 @@ func DbDir() string {
 // LogPath returns the log file path.
 func LogPath() string {
 	return logPath
-}
-
-// Cleanup performs cleanup operations such as closing log files.
-func Cleanup() {
-	log.Println("Cleaning up resources")
-
-	if logFile != nil {
-		if err := logFile.Close(); err != nil {
-			log.Fatalf("Error closing log file: %v", err)
-		}
-	}
 }
