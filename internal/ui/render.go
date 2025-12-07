@@ -74,7 +74,7 @@ func renderPrompt(m model) string {
 	// If loading, show spinner
 	if m.state == StateLoading {
 		return promptStyle.Render(m.spinner.View() +
-			bodyStyle.Render(" Loading..."))
+			bodyStyle.Render(" Coming up with words..."))
 	}
 
 	render := ""
@@ -87,18 +87,34 @@ func renderPrompt(m model) string {
 		for _, promptChar := range line {
 			var style lipgloss.Style
 
-			if pos == m.cursor {
-				style = bodyStyle.Underline(true)
-			} else if promptChar == ' ' {
-				style = mutedStyle
-			} else if m.cursor < pos {
-				style = bodyStyle
-			} else if promptChar != inputRunes[pos] {
-				style = errorStyle
-			} else if m.mistakes[pos] {
-				style = accentStyle
-			} else {
-				style = mutedStyle
+			switch m.state {
+			case StateBreak:
+				// In break state, show all characters as muted except mistakes
+				if len(m.input) <= pos {
+					style = mutedStyle
+				} else if promptChar != inputRunes[pos] {
+					style = errorStyle
+				} else if m.mistakes[pos] {
+					style = accentStyle
+				} else {
+					style = mutedStyle
+				}
+			default:
+				// In session state, style based on cursor and mistakes
+				// Corrected mistakes are shown in accent color
+				if pos == m.cursor {
+					style = bodyStyle.Underline(true)
+				} else if promptChar == ' ' {
+					style = mutedStyle
+				} else if m.cursor < pos {
+					style = bodyStyle
+				} else if promptChar != inputRunes[pos] {
+					style = errorStyle
+				} else if m.mistakes[pos] {
+					style = accentStyle
+				} else {
+					style = mutedStyle
+				}
 			}
 
 			if promptChar == ' ' {
