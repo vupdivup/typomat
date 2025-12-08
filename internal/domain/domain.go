@@ -182,58 +182,43 @@ func tokenizeDirectory(dirPath string) error {
 	return nil
 }
 
-// generatePrompt generates a prompt of the maximum specified character length
-// from tokens of the database.
-func generatePrompt(maxChars int) (string, error) {
+// generatePrompt creates a prompt of up to maxLen characters by randomly
+// sampling tokens from the database.
+func generatePrompt(maxLen int) (string, error) {
+	// Estimate max number of words needed to reach maxLen
+	maxWordsNeeded := int(
+		math.Round(float64(maxLen+1) / float64((minTokenLen + 1))))
+
+	// Get random tokens, sample more than needed to account for length cutoff
+	tokenResults := lazy.Sample(data.IterUniqueTokens(dbId), maxWordsNeeded)
 	tokens := []string{}
+	for _, tr := range tokenResults {
+		if tr.Err != nil {
+			return "", tr.Err
+		}
+		tokens = append(tokens, tr.Token.Value)
+	}
+
+	// Shuffle tokens to ensure randomness
+	shuffled := random.Shuffle(tokens)
+
+	// Select tokens in shuffle order until reaching maxLen
 	promptLen := 0
-	for {
-		// Get a random token
-		token, err := getRandomToken()
-		if err != nil {
-			return "", err
+	promptTokens := []string{}
+	for i, token := range shuffled {
+		// Account for space before token if not the first one
+		if i > 0 {
+			promptLen++
 		}
 
-		// Account for space before token
-		if promptLen != 0 {
-			promptLen += 1
-		}
-
-		// Check if adding the token would exceed maxChars
 		promptLen += len([]rune(token))
-		if promptLen > maxChars {
+		if promptLen > maxLen {
 			break
 		}
-
-		tokens = append(tokens, token)
+		promptTokens = append(promptTokens, token)
 	}
 
-	prompt := strings.Join(tokens, " ")
-
-	return prompt, nil
-}
-
-// getRandomToken returns a random token from the database using reservoir
-// sampling.
-func getRandomToken() (string, error) {
-	iter := data.IterUniqueTokens(dbId)
-	token := ""
-	i := 0
-
-	for item, err := range iter {
-		if err != nil {
-			return "", err
-		} else {
-			j := rand.IntN(i + 1)
-			if j == i {
-				token = item.Value
-			}
-		}
-
-		i++
-	}
-
-	return token, nil
+	return strings.Join(promptTokens, " "), nil
 }
 
 // isFileEligible returns true if the file should be included for tokenization.
