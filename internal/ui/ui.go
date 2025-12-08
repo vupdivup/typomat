@@ -82,6 +82,8 @@ type model struct {
 
 	// promptPool holds pre-fetched prompts.
 	promptPool []string
+	// promptsBeingFetched tracks the number of ongoing prompt fetches.
+	promptsBeingFetched int
 
 	// startTime is the time when the typing session started.
 	startTime time.Time
@@ -96,18 +98,8 @@ type model struct {
 	spinner spinner.Model
 }
 
-type promptMsg string
-
-// promptCmd fetches a new prompt from the domain layer.
-func promptCmd(m model) tea.Cmd {
-	return func() tea.Msg {
-		prompt, err := domain.Prompt(m.dirPath, 128)
-		if err != nil {
-			panic(err) // TODO: graceful error handling
-		}
-		return promptMsg(prompt)
-	}
-}
+// promptFetchedMsg is a message indicating a prompt has been fetched.
+type promptFetchedMsg string
 
 // initialModel creates the initial TUI model.
 func initialModel(dirPath string) model {
@@ -121,43 +113,103 @@ func initialModel(dirPath string) model {
 	m := model{
 		dirPath: dirPath,
 		help:    help,
-		state:   StateLoading,
 		spinner: spinner,
 	}
 
 	return m
 }
 
+// load sets up the model for a loading state.
+func (m model) load() model {
+	m.state = StateLoading
+	return m
+}
+
 // ready sets up the model for a ready state with a new prompt.
-func (m *model) ready(prompt string) {
-	m.prompt = prompt
+func (m model) ready() model {
 	m.mistakes = make(map[int]bool)
 	m.input = ""
 	m.cursor = 0
 	m.wpm = 0
 	m.accuracy = 0.0
 	m.state = StateReady
+	return m
 }
 
 // start begins the typing session.
-func (m *model) start() {
+func (m model) start() model {
 	m.state = StateSession
 	m.startTime = time.Now()
+	return m
 }
 
 // stop ends the typing session.
-func (m *model) stop() {
+func (m model) stop() model {
 	m.state = StateBreak
+	return m
+}
+
+// initMsg is the initial message to start the TUI.
+type initMsg struct{}
+
+// initCmd returns the initial command to start the TUI.
+func initCmd() tea.Cmd {
+	return func() tea.Msg {
+		return initMsg{}
+	}
+}
+
+// fetchMorePromptsIfNeeded initiates fetching another prompt asynchronously.
+// If a fetch is already in progress or the pool is sufficiently full, it does
+// nothing.
+// Make sure to capture the new model state to reflect the necessary changes.
+func (m model) fetchMorePromptsIfNeeded() (model, tea.Cmd) {
+	if len(m.promptPool) >= promptPoolSize || m.promptsBeingFetched > 0 {
+		return m, nil
+	}
+
+	m.promptsBeingFetched++
+	return m, func() tea.Msg {
+		prompt, err := domain.Prompt(m.dirPath, 128) // TODO: config
+		if err != nil {
+			panic(err) // TODO: graceful error handling
+		}
+		return promptFetchedMsg(prompt)
+	}
+}
+
+// acceptPrompt adds a fetched prompt to the model's pool.
+func (m model) acceptPrompt(prompt string) model {
+	m.promptsBeingFetched--
+	m.promptPool = append(m.promptPool, prompt)
+	return m
+}
+
+// consumePrompt removes the next prompt from the pool and sets it as the
+// current prompt.
+func (m model) consumePrompt() model {
+	if len(m.promptPool) == 0 {
+		return m
+	}
+	prompt := m.promptPool[0]
+	m.promptPool = m.promptPool[1:]
+	m.prompt = prompt
+	return m
 }
 
 // Init is the initial command for the TUI.
 func (m model) Init() tea.Cmd {
-	return tea.Batch(promptCmd(m), m.spinner.Tick)
+	return initCmd()
 }
 
 // Update handles incoming messages and updates the TUI state.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case initMsg:
+		var cmd tea.Cmd
+		m, cmd = m.load().fetchMorePromptsIfNeeded()
+		return m, tea.Batch(m.spinner.Tick, cmd)
 
 	case tea.KeyMsg:
 		// Quit if Ctrl+C is pressed
@@ -169,8 +221,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.state == StateSession || m.state == StateReady {
 			if key.Matches(msg, sessionKeys.Stop) {
-				m.stop()
-				return m, nil
+				return m.stop(), nil
 			}
 
 			if msgStr == "backspace" && m.cursor > 0 {
@@ -189,7 +240,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Start session on first valid input
 				if m.state == StateReady {
-					m.start()
+					m = m.start()
 				}
 
 				// Check for mistake
@@ -209,7 +260,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// End session if prompt completed
 				if m.cursor >= len(promptRunes) {
-					m.stop()
+					return m.stop(), nil
 				}
 			}
 		} else {
@@ -217,32 +268,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, breakKeys.Restart):
 				// Check if more prompts are available
 				if len(m.promptPool) == 0 {
-					m.state = StateLoading
-					return m, m.spinner.Tick
+					m = m.load()
+					return m.fetchMorePromptsIfNeeded()
 				}
 
 				// Load next prompt from pool
-				m.ready(m.promptPool[0])
-				m.promptPool = m.promptPool[1:]
-				return m, promptCmd(m)
+				m = m.consumePrompt().ready()
+
+				return m.fetchMorePromptsIfNeeded()
 
 			case key.Matches(msg, breakKeys.Quit):
 				return m, tea.Quit
 			}
 		}
 
-	case promptMsg:
+	case promptFetchedMsg:
+		m = m.acceptPrompt(string(msg))
+
 		if m.state == StateLoading {
-			m.ready(string(msg))
-		} else {
-			m.promptPool = append(m.promptPool, string(msg))
+			m = m.consumePrompt().ready()
 		}
 
 		// Fetch more prompts if pool is low
-		if len(m.promptPool) < promptPoolSize {
-			return m, promptCmd(m)
-		}
-		return m, nil
+		return m.fetchMorePromptsIfNeeded()
 
 	case spinner.TickMsg:
 		if m.state != StateLoading {
