@@ -268,8 +268,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, breakKeys.Restart):
 				// Check if more prompts are available
 				if len(m.promptPool) == 0 {
-					m = m.load()
-					return m.fetchMorePromptsIfNeeded()
+					var cmd tea.Cmd
+					m, cmd = m.load().fetchMorePromptsIfNeeded()
+					return m, tea.Batch(cmd, m.spinner.Tick)
 				}
 
 				// Load next prompt from pool
