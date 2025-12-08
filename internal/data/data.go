@@ -50,8 +50,10 @@ type TokenResult struct {
 type File struct {
 	// Path is the path to the file.
 	Path string `gorm:"primaryKey"`
-	// Fingerprint is the file's hash fingerprint.
-	Fingerprint string
+	// Size is the size of the file in bytes.
+	Size int
+	// Mtime is the modification time of the file.
+	Mtime time.Time
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

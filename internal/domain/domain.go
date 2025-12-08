@@ -130,19 +130,28 @@ func tokenizeDirectory(dirPath string) error {
 			continue
 		}
 
-		// Calculate file fingerprint
-		fingerprint, err := fileutils.GetFingerprint(filepath)
+		// Calculate size and mtime
+		size, err := fileutils.Size(filepath)
+		if err != nil {
+			return err
+		}
+		mtime, err := fileutils.Mtime(filepath)
 		if err != nil {
 			return err
 		}
 
-		file := data.File{Path: filepath, Fingerprint: fingerprint}
+		file := data.File{Path: filepath, Size: size, Mtime: mtime}
 
 		if dbFile, ok := dbFiles[filepath]; ok {
 			// File from db still exists, so remove from deletion list
 			delete(removedFiles, filepath)
 
-			if dbFile.Fingerprint == fingerprint {
+			hasFileChanged, err := hasFileChanged(dbFile)
+			if err != nil {
+				return err
+			}
+
+			if !hasFileChanged {
 				// File unchanged, skip tokenization
 				zap.S().Debugw("Skipping unchanged file",
 					"file_path", filepath)
@@ -264,4 +273,20 @@ func isTokenEligible(token string) bool {
 func isWordEligible(word string) bool {
 	runes := []rune(word)
 	return len(runes) < maxWordLen
+}
+
+// hasFileChanged checks if the file has changed compared to the stored
+// metadata.
+// It compares size and modification time.
+func hasFileChanged(file data.File) (bool, error) {
+	size, err := fileutils.Size(file.Path)
+	if err != nil {
+		return false, err
+	}
+
+	mtime, err := fileutils.Mtime(file.Path)
+	if err != nil {
+		return false, err
+	}
+	return size != file.Size || mtime.Unix() != file.Mtime.Unix(), nil
 }
