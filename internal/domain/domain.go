@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"math/rand/v2"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,11 +9,15 @@ import (
 	"github.com/vupdivup/recital/internal/data"
 	"github.com/vupdivup/recital/pkg/fileutils"
 	"github.com/vupdivup/recital/pkg/git"
+	"github.com/vupdivup/recital/pkg/random"
+	"github.com/vupdivup/recital/pkg/random/lazy"
 	"github.com/vupdivup/recital/pkg/tokenizer"
 	"go.uber.org/zap"
 )
 
 var (
+	// dbId is the identifier of the current token database, static throughout
+	// the app lifecycle.
 	dbId         string
 	hasTokenized bool = false
 )
@@ -61,7 +65,8 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 // and stores the tokens in the database.
 func tokenizeDirectory(dirPath string) error {
 	tokens := []data.Token{}
-	filesToUpsert := []data.File{}
+	changedFiles := []data.File{}
+	newFiles := []data.File{}
 
 	dbFilesTmp, err := data.GetFiles(dbId)
 	if err != nil {
@@ -69,26 +74,29 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	dbFiles := map[string]data.File{}
-	filesToRemove := map[string]data.File{}
+	removedFiles := map[string]data.File{}
 	for _, dbFile := range dbFilesTmp {
 		dbFiles[dbFile.Path] = dbFile
-		filesToRemove[dbFile.Path] = dbFile
+		removedFiles[dbFile.Path] = dbFile
 	}
 
 	flushTokens := func() error {
 		// Delete tokens and file entries for changed or new files to purge
 		// token sets
-		for _, file := range filesToUpsert {
-			// TODO: don't delete if new
-			zap.S().Infow("Updating tokens for file",
-				"file_path", file.Path)
+		for _, file := range changedFiles {
+			// TODO: delete tokens only?
 			if err := data.DeleteFile(dbId, file, true); err != nil {
 				return err
 			}
 		}
 
 		// (Re-)upload files previously deleted
-		if err := data.UpsertFiles(dbId, filesToUpsert); err != nil {
+		if err := data.UpsertFiles(dbId, changedFiles); err != nil {
+			return err
+		}
+
+		// Upload new files
+		if err := data.UpsertFiles(dbId, newFiles); err != nil {
 			return err
 		}
 
@@ -100,7 +108,8 @@ func tokenizeDirectory(dirPath string) error {
 			return err
 		}
 
-		filesToUpsert = filesToUpsert[:0]
+		changedFiles = changedFiles[:0]
+		newFiles = newFiles[:0]
 		tokens = tokens[:0]
 		return nil
 	}
@@ -116,7 +125,7 @@ func tokenizeDirectory(dirPath string) error {
 		if isDesired, err := isFileEligible(filepath); err != nil {
 			return err
 		} else if !isDesired {
-			zap.S().Infow("Skipping ineligible file",
+			zap.S().Debugw("Skipping ineligible file",
 				"file_path", filepath)
 			continue
 		}
@@ -126,21 +135,30 @@ func tokenizeDirectory(dirPath string) error {
 		if err != nil {
 			return err
 		}
+
+		file := data.File{Path: filepath, Fingerprint: fingerprint}
+
 		if dbFile, ok := dbFiles[filepath]; ok {
-			// File still exists, so remove from deletion list
-			delete(filesToRemove, filepath)
+			// File from db still exists, so remove from deletion list
+			delete(removedFiles, filepath)
 
 			if dbFile.Fingerprint == fingerprint {
 				// File unchanged, skip tokenization
-				zap.S().Infow("Skipping unchanged file",
+				zap.S().Debugw("Skipping unchanged file",
 					"file_path", filepath)
 				continue
+			} else {
+				// File changed since last tokenization
+				zap.S().Debugw("Re-tokenizing changed file",
+					"file_path", filepath)
+				changedFiles = append(changedFiles, file)
 			}
+		} else {
+			// New file
+			zap.S().Debugw("Tokenizing new file",
+				"file_path", filepath)
+			newFiles = append(newFiles, file)
 		}
-
-		// Mark file for upsert
-		filesToUpsert = append(
-			filesToUpsert, data.File{Path: filepath, Fingerprint: fingerprint})
 
 		// Tokenize file
 		fileTokens, err := tokenizer.TokenizeFile(filepath, isWordEligible)
@@ -171,7 +189,7 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	// Delete tokens and entries of files that don't exist anymore
-	for _, file := range filesToRemove {
+	for _, file := range removedFiles {
 		zap.S().Infow("Deleting removed file from database",
 			"file_path", file.Path)
 		if err := data.DeleteFile(dbId, file, true); err != nil {
