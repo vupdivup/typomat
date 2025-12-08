@@ -23,10 +23,10 @@ const (
 	windowPaddingV     = 1
 	windowContentWidth = contentWidth - 2*windowPaddingV
 	promptWidth        = windowContentWidth - 2*3
-)
 
-const (
+	// Domain-specific
 	promptPoolSize = 3
+	maxPromptLen   = 128
 )
 
 var (
@@ -170,7 +170,7 @@ func (m model) fetchMorePromptsIfNeeded() (model, tea.Cmd) {
 
 	m.promptsBeingFetched++
 	return m, func() tea.Msg {
-		prompt, err := domain.Prompt(m.dirPath, 128) // TODO: config
+		prompt, err := domain.Prompt(m.dirPath, maxPromptLen)
 		if err != nil {
 			panic(err) // TODO: graceful error handling
 		}
