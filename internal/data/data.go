@@ -37,6 +37,15 @@ type Token struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
+// TokenResult represents the result of a token iteration, containing either
+// a token or an error.
+type TokenResult struct {
+	// Token is the token retrieved from the database.
+	Token Token
+	// Err is any error encountered during retrieval.
+	Err error
+}
+
 // File represents a file in the user's file system.
 type File struct {
 	// Path is the path to the file.
@@ -160,31 +169,34 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 }
 
 // IterUniqueTokens returns an iterator over distinct tokens in the database.
-func IterUniqueTokens(dbId string) iter.Seq2[Token, error] {
+func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 	zap.S().Debugw("Creating iterator for unique tokens",
 		"db_id", dbId)
 
-	return func(yield func(Token, error) bool) {
+	return func(yield func(TokenResult) bool) {
+		// Open the database
 		db, err := openDb(dbId)
 		if err != nil {
-			yield(Token{}, err)
+			yield(TokenResult{Err: err})
 			return
 		}
 
+		// Query distinct tokens
 		rows, err := db.Model(&Token{}).Distinct("value").Rows()
 		if err != nil {
-			yield(Token{}, err)
+			yield(TokenResult{Err: err})
 			return
 		}
 		defer rows.Close()
 
+		// Iterate over the result set
 		for rows.Next() {
 			var token Token
 			if err := db.ScanRows(rows, &token); err != nil {
-				yield(Token{}, err)
+				yield(TokenResult{Err: err})
 				return
 			}
-			if !yield(token, nil) {
+			if !yield(TokenResult{Token: token}) {
 				return
 			}
 		}
@@ -212,9 +224,6 @@ func GetFiles(dbId string) ([]File, error) {
 // openDb opens (or creates) a database with the given identifier.
 // Cached database connections are reused.
 func openDb(id string) (*gorm.DB, error) {
-	zap.S().Debugw("Opening database",
-		"db_id", id)
-
 	if db, ok := dbCache[id]; ok {
 		zap.S().Debugw("Reusing cached database connection",
 			"db_id", id)
