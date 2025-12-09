@@ -75,8 +75,6 @@ type model struct {
 	prompt string
 	// input is the current user input.
 	input string
-	// cursor is the current cursor position.
-	cursor int
 	// mistakes records the positions of mistakes made.
 	mistakes map[int]bool
 
@@ -96,6 +94,11 @@ type model struct {
 	help help.Model
 	// spinner is the loading spinner view model.
 	spinner spinner.Model
+}
+
+// cursor returns the current cursor position within the prompt.
+func (m model) cursor() int {
+	return len([]rune(m.input))
 }
 
 // promptFetchedMsg is a message indicating a prompt has been fetched.
@@ -129,7 +132,6 @@ func (m model) load() model {
 func (m model) ready() model {
 	m.mistakes = make(map[int]bool)
 	m.input = ""
-	m.cursor = 0
 	m.wpm = 0
 	m.accuracy = 0.0
 	m.state = StateReady
@@ -202,6 +204,31 @@ func (m model) Init() tea.Cmd {
 	return initCmd()
 }
 
+// handleBackspace processes a backspace key press.
+func (m model) handleBackspace() model {
+	if m.cursor() == 0 {
+		return m
+	}
+
+	inputRunes := []rune(m.input)
+	m.input = string(inputRunes[:len(inputRunes) - 1])
+	return m
+}
+
+// handleCtrlBackspace processes a Ctrl+Backspace key press.
+func (m model) handleCtrlBackspace() model {
+	inputRunes := []rune(m.input)
+	promptRunes := []rune(m.prompt)
+
+	cursor := m.cursor()
+	for cursor > 0 && (promptRunes[cursor-1] != ' ' || cursor == m.cursor()) {
+		cursor--
+	}
+
+	m.input = string(inputRunes[:cursor])
+	return m
+}
+
 // Update handles incoming messages and updates the TUI state.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -217,19 +244,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		msgStr := msg.String()
-
 		if m.state == StateSession || m.state == StateReady {
 			if key.Matches(msg, sessionKeys.Stop) {
 				return m.stop(), nil
 			}
 
-			if msgStr == "backspace" && m.cursor > 0 {
-				// Handle backspace
-				m.cursor--
-				m.input = m.input[:len(m.input)-1]
-			} else {
-				msgRunes := []rune(msgStr)
+			switch msg.String() {
+			case "backspace":
+				return m.handleBackspace(), nil
+			case "ctrl+backspace", "ctrl+w":
+				return m.handleCtrlBackspace(), nil
+			default:
+				msgRunes := []rune(msg.String())
 				promptRunes := []rune(m.prompt)
 
 				// Ignore non-character keys or unsupported runes
@@ -244,13 +270,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				// Check for mistake
-				if msgStr != string(promptRunes[m.cursor]) {
-					m.mistakes[m.cursor] = true
+				if msg.String() != string(promptRunes[m.cursor()]) {
+					m.mistakes[m.cursor()] = true
 				}
 
 				// Accept input
-				m.input += msgStr
-				m.cursor++
+				m.input += msg.String()
 
 				// Update metrics
 				elapsed := time.Since(m.startTime)
@@ -259,7 +284,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					math.Round(metrics.Accuracy(m.prompt, m.input)))
 
 				// End session if prompt completed
-				if m.cursor >= len(promptRunes) {
+				if m.cursor() >= len(promptRunes) {
 					return m.stop(), nil
 				}
 			}
