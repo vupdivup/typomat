@@ -5,6 +5,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -53,7 +54,7 @@ func init() {
 
 	// Initialize zap logger
 	var config zap.Config
-	if os.Getenv("DEBUG") == "" {
+	if os.Getenv(strings.ToUpper(AppName)+"_DEBUG") == "" {
 		config = zap.NewProductionConfig()
 	} else {
 		config = zap.NewDevelopmentConfig()
