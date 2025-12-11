@@ -17,29 +17,43 @@ import (
 )
 
 const (
-	// Configuration
-	width              = 80
-	contentWidth       = width - 2
-	windowPaddingV     = 1
-	windowContentWidth = contentWidth - 2*windowPaddingV
-	promptWidth        = windowContentWidth - 2*3
+	// windowOuterWidth is the total width of the TUI, including borders.
+	windowOuterWidth = 80
+	// windowPaddedWidth is the width of the window including padding but no
+	// borders.
+	windowPaddedWidth = windowOuterWidth - 2
+	// windowPaddingVertical defines the vertical padding inside the window.
+	windowPaddingVertical = 0
+	// windowPaddingHorizontal defines the horizontal padding inside the window.
+	windowPaddingHorizontal = 1
+	// windowContentWidth is the width available for content inside the window.
+	windowContentWidth = windowOuterWidth - 2 - 2*windowPaddingHorizontal
 
-	// Domain-specific
+	// canvasPaddingVertical defines the vertical padding inside the canvas.
+	canvasPaddingVertical = 1
+	// canvasPaddingHorizontal defines the horizontal padding inside the canvas.
+	canvasPaddingHorizontal = 3
+	// canvasContentWidth is the width available for content inside the canvas.
+	canvasContentWidth = windowContentWidth - 2*canvasPaddingHorizontal
+
+	// promptPoolSize is the number of pre-fetched prompts to maintain.
 	promptPoolSize = 3
-	maxPromptLen   = 128
+	// maxPromptLen is the maximum length of a typing prompt.
+	maxPromptLen = 128
 )
 
 var (
 	// Styles
 	windowStyle = lipgloss.NewStyle().
-			Width(contentWidth).
-			Padding(0, windowPaddingV).
+			Width(windowPaddedWidth).
+			Padding(windowPaddingVertical, windowPaddingHorizontal).
 			Border(lipgloss.RoundedBorder()).
 			BorderTop(false).
 			BorderForeground(mutedColor)
 
-	promptStyle = lipgloss.NewStyle().
-			Padding(1, 3).Height(4)
+	canvasStyle = lipgloss.NewStyle().
+			Padding(canvasPaddingVertical, canvasPaddingHorizontal).
+			Height(4)
 
 	accentColor = lipgloss.Color("75")
 	bodyColor   = lipgloss.Color("252")
@@ -211,7 +225,7 @@ func (m model) handleBackspace() model {
 	}
 
 	inputRunes := []rune(m.input)
-	m.input = string(inputRunes[:len(inputRunes) - 1])
+	m.input = string(inputRunes[:len(inputRunes)-1])
 	return m
 }
 

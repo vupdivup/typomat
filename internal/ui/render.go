@@ -16,7 +16,7 @@ func renderTitleBar() string {
 	// The title 'sits' on the upper border line
 	title := accentStyle.Render(" Recital ")
 
-	restWidth := width - lipgloss.Width(left) - lipgloss.Width(title)
+	restWidth := windowOuterWidth - lipgloss.Width(left) - lipgloss.Width(title)
 	right := mutedStyle.Render(strings.Repeat("─", restWidth-1) + "╮")
 
 	return left + title + right
@@ -58,10 +58,6 @@ func renderStats(m model) string {
 
 // renderStatusBar renders the status bar with help and stats.
 func renderStatusBar(m model) string {
-	if m.state == StateLoading {
-		return ""
-	}
-
 	help := renderHelp(m)
 	stats := renderStats(m)
 
@@ -71,15 +67,9 @@ func renderStatusBar(m model) string {
 
 // renderPrompt renders the prompt with appropriate styles.
 func renderPrompt(m model) string {
-	// If loading, show spinner
-	if m.state == StateLoading {
-		return promptStyle.Render(m.spinner.View() +
-			bodyStyle.Render(" Coming up with words..."))
-	}
-
 	render := ""
 
-	promptLines := textutils.Wrap(m.prompt, promptWidth, ' ')
+	promptLines := textutils.Wrap(m.prompt, canvasContentWidth, ' ')
 	inputRunes := []rune(m.input)
 	pos := 0
 
@@ -102,7 +92,13 @@ func renderPrompt(m model) string {
 			default:
 				// In session state, style based on cursor and mistakes
 				// Corrected mistakes are shown in accent color
-				if pos == m.cursor {
+				if pos > m.cursor() {
+					if promptChar == ' ' {
+						style = mutedStyle
+					} else {
+						style = bodyStyle
+					}
+				} else if pos == m.cursor() {
 					style = bodyStyle.Underline(true)
 				} else {
 					if promptChar != inputRunes[pos] {
@@ -128,16 +124,40 @@ func renderPrompt(m model) string {
 		}
 	}
 
-	return promptStyle.Render(render)
+	return render
+}
+
+// renderLoad renders the loading indicator.
+func renderLoad(m model) string {
+	return m.spinner.View() + bodyStyle.Render(" Coming up with words...")
+}
+
+// renderCanvas renders the main canvas area based on the application state.
+func renderCanvas(m model) string {
+	switch m.state {
+	case StateLoading:
+		return canvasStyle.Render(renderLoad(m))
+	default:
+		return canvasStyle.Render(renderPrompt(m))
+	}
 }
 
 // renderWindow renders the main application window.
 func renderWindow(m model) string {
+	var statusBar string
+
+	switch m.state {
+	case StateLoading:
+		statusBar = ""
+	default:
+		statusBar = renderStatusBar(m)
+	}
+
 	return windowStyle.Render(
-		renderPrompt(m) + "\n" + renderStatusBar(m))
+		renderCanvas(m) + "\n" + statusBar)
 }
 
 // renderApp renders the entire application UI.
 func renderApp(m model) string {
-	return renderTitleBar() + "\n" + renderWindow(m) + "\n"
+	return "\n" + renderTitleBar() + "\n" + renderWindow(m) + "\n"
 }
