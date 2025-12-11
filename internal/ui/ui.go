@@ -68,12 +68,17 @@ var (
 	allowedInputRunes = append(alphabet.AllRunes, ' ')
 )
 
+// AppState represents the current state of the application.
 type AppState int
 
 const (
+	// StateLoading indicates the application is loading resources.
 	StateLoading AppState = iota
+	// StateSession indicates an active typing session.
 	StateSession
+	// StateBreak indicates a break between typing sessions.
 	StateBreak
+	// StateReady indicates the application is ready for a new typing session.
 	StateReady
 )
 
@@ -82,8 +87,8 @@ type model struct {
 	// dirPath is the directory path for prompts.
 	dirPath string
 
-	// state is the current application state.
-	state AppState
+	// appState is the current application appState.
+	appState AppState
 
 	// prompt is the text prompt to type.
 	prompt string
@@ -141,7 +146,7 @@ func initialModel(dirPath string) model {
 
 // load sets up the model for a loading state.
 func (m model) load() model {
-	m.state = StateLoading
+	m.appState = StateLoading
 	return m
 }
 
@@ -151,20 +156,20 @@ func (m model) ready() model {
 	m.input = ""
 	m.wpm = 0
 	m.accuracy = 0.0
-	m.state = StateReady
+	m.appState = StateReady
 	return m
 }
 
 // start begins the typing session.
 func (m model) start() model {
-	m.state = StateSession
+	m.appState = StateSession
 	m.startTime = time.Now()
 	return m
 }
 
 // stop ends the typing session.
 func (m model) stop() model {
-	m.state = StateBreak
+	m.appState = StateBreak
 	return m
 }
 
@@ -258,7 +263,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		if m.state == StateSession || m.state == StateReady {
+		if m.appState == StateSession || m.appState == StateReady {
 			if key.Matches(msg, sessionKeys.Stop) {
 				return m.stop(), nil
 			}
@@ -279,7 +284,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				// Start session on first valid input
-				if m.state == StateReady {
+				if m.appState == StateReady {
 					m = m.start()
 				}
 
@@ -330,7 +335,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m = m.acceptPrompt(msg.prompt)
 
-		if m.state == StateLoading {
+		if m.appState == StateLoading {
 			m = m.consumePrompt().ready()
 		}
 
@@ -338,7 +343,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.fetchMorePromptsIfNeeded()
 
 	case spinner.TickMsg:
-		if m.state != StateLoading {
+		if m.appState != StateLoading {
 			return m, nil
 		}
 		var cmd tea.Cmd

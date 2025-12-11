@@ -26,7 +26,7 @@ func renderTitleBar() string {
 func renderHelp(m model) string {
 	var keyMap help.KeyMap
 
-	if m.state == StateSession || m.state == StateReady {
+	if m.appState == StateSession || m.appState == StateReady {
 		m.help.Styles.ShortDesc = mutedStyle
 		keyMap = sessionKeys
 	} else {
@@ -40,7 +40,7 @@ func renderHelp(m model) string {
 func renderStats(m model) string {
 	var labelStyle lipgloss.Style
 
-	if m.state == StateSession || m.state == StateReady {
+	if m.appState == StateSession || m.appState == StateReady {
 		labelStyle = mutedStyle
 	} else {
 		labelStyle = bodyStyle
@@ -77,7 +77,7 @@ func renderPrompt(m model) string {
 		for _, promptChar := range line {
 			var style lipgloss.Style
 
-			switch m.state {
+			switch m.appState {
 			case StateBreak:
 				// In break state, show all characters as muted except mistakes
 				if len(m.input) <= pos {
@@ -134,7 +134,7 @@ func renderLoad(m model) string {
 
 // renderCanvas renders the main canvas area based on the application state.
 func renderCanvas(m model) string {
-	switch m.state {
+	switch m.appState {
 	case StateLoading:
 		return canvasStyle.Render(renderLoad(m))
 	default:
@@ -146,7 +146,7 @@ func renderCanvas(m model) string {
 func renderWindow(m model) string {
 	var statusBar string
 
-	switch m.state {
+	switch m.appState {
 	case StateLoading:
 		statusBar = ""
 	default:
