@@ -104,16 +104,14 @@ func renderPrompt(m model) string {
 				// Corrected mistakes are shown in accent color
 				if pos == m.cursor {
 					style = bodyStyle.Underline(true)
-				} else if promptChar == ' ' {
-					style = mutedStyle
-				} else if m.cursor < pos {
-					style = bodyStyle
-				} else if promptChar != inputRunes[pos] {
-					style = errorStyle
-				} else if m.mistakes[pos] {
-					style = accentStyle
 				} else {
-					style = mutedStyle
+					if promptChar != inputRunes[pos] {
+						style = errorStyle
+					} else if m.mistakes[pos] {
+						style = accentStyle
+					} else {
+						style = mutedStyle
+					}
 				}
 			}
 
