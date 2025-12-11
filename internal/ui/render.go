@@ -6,6 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vupdivup/recital/internal/config"
 	"github.com/vupdivup/recital/pkg/textutils"
 )
 
@@ -14,7 +15,7 @@ func renderTitleBar() string {
 	left := mutedStyle.Render("╭" + "──")
 
 	// The title 'sits' on the upper border line
-	title := accentStyle.Render(" Recital ")
+	title := accentStyle.Render(" " + config.ProductName + " ")
 
 	restWidth := windowOuterWidth - lipgloss.Width(left) - lipgloss.Width(title)
 	right := mutedStyle.Render(strings.Repeat("─", restWidth-1) + "╮")
