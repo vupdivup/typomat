@@ -19,9 +19,8 @@ const (
 )
 
 var (
-	appDir  string
-	dbDir   string
-	logPath string
+	appDir string
+	dbDir  string
 )
 
 func init() {
@@ -50,7 +49,7 @@ func init() {
 
 	// Determine log file path
 	logFileName := time.Now().Format("20060102_150405") + ".log"
-	logPath = filepath.Join(logDir, logFileName)
+	logPath := filepath.Join(logDir, logFileName)
 
 	// Initialize zap logger
 	var config zap.Config
@@ -76,9 +75,4 @@ func AppDir() string {
 // DbDir returns the directory path where database files are stored.
 func DbDir() string {
 	return dbDir
-}
-
-// LogPath returns the log file path.
-func LogPath() string {
-	return logPath
 }
