@@ -116,7 +116,10 @@ func (m model) cursor() int {
 }
 
 // promptFetchedMsg is a message indicating a prompt has been fetched.
-type promptFetchedMsg string
+type promptFetchedMsg struct {
+	prompt string
+	err    error
+}
 
 // initialModel creates the initial TUI model.
 func initialModel(dirPath string) model {
@@ -187,10 +190,7 @@ func (m model) fetchMorePromptsIfNeeded() (model, tea.Cmd) {
 	m.promptsBeingFetched++
 	return m, func() tea.Msg {
 		prompt, err := domain.Prompt(m.dirPath, maxPromptLen)
-		if err != nil {
-			panic(err) // TODO: graceful error handling
-		}
-		return promptFetchedMsg(prompt)
+		return promptFetchedMsg{prompt: prompt, err: err}
 	}
 }
 
@@ -323,7 +323,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case promptFetchedMsg:
-		m = m.acceptPrompt(string(msg))
+		if msg.err != nil {
+			println("An unexpected error occured")
+			return m, tea.Quit
+		}
+
+		m = m.acceptPrompt(msg.prompt)
 
 		if m.state == StateLoading {
 			m = m.consumePrompt().ready()
