@@ -60,6 +60,13 @@ type File struct {
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
+// VersionEquals checks if two File instances refer to the same version of a file.
+// Comparison is based on file path, mtime and size.
+func (f *File) VersionEquals(other File) bool {
+	return f.Path == other.Path && f.Mtime.Unix() == other.Mtime.Unix() &&
+		f.Size == other.Size
+}
+
 // UpsertTokens inserts or updates the given tokens in a database.
 func UpsertTokens(dbId string, tokens []Token) error {
 	zap.S().Debugw("Upserting tokens into database",
