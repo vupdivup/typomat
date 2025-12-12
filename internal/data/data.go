@@ -67,9 +67,6 @@ func UpsertTokens(dbId string, tokens []Token) error {
 		"db_id", dbId)
 	db, err := openDb(dbId)
 	if err != nil {
-		zap.S().Errorw("Failed to open database",
-			"db_id", dbId,
-			"error", err)
 		return err
 	}
 
@@ -79,7 +76,7 @@ func UpsertTokens(dbId string, tokens []Token) error {
 		zap.S().Errorw("Failed to upsert tokens into database",
 			"db_id", dbId,
 			"error", result.Error)
-		return result.Error
+		return ErrDbOperation
 	}
 
 	zap.S().Debugw("Successfully upserted tokens into database",
@@ -93,11 +90,9 @@ func UpsertFiles(dbId string, files []File) error {
 	zap.S().Debugw("Upserting files into database",
 		"file_count", len(files),
 		"db_id", dbId)
+
 	db, err := openDb(dbId)
 	if err != nil {
-		zap.S().Errorw("Failed to open database",
-			"db_id", dbId,
-			"error", err)
 		return err
 	}
 
@@ -107,7 +102,7 @@ func UpsertFiles(dbId string, files []File) error {
 		zap.S().Errorw("Failed to upsert files into database",
 			"db_id", dbId,
 			"error", result.Error)
-		return result.Error
+		return ErrDbOperation
 	}
 
 	zap.S().Debugw("Successfully upserted files into database",
@@ -126,9 +121,6 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 	// Open the database
 	db, err := openDb(dbId)
 	if err != nil {
-		zap.S().Errorw("Failed to open database",
-			"db_id", dbId,
-			"error", err)
 		return err
 	}
 
@@ -138,7 +130,7 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 			"file_path", file.Path,
 			"db_id", dbId,
 			"error", err)
-		return err
+		return ErrDbOperation
 	}
 
 	if !cascade {
@@ -160,13 +152,41 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 			"file_path", file.Path,
 			"db_id", dbId,
 			"error", err)
-		return err
+		return ErrDbOperation
 	}
 
 	zap.S().Debugw(
 		"Successfully deleted file and associated tokens from database",
 		"file_path", file.Path,
 		"db_id", dbId)
+	return nil
+}
+
+// DeleteTokensOfFile removes all tokens associated with a specific file
+// from the database.
+func DeleteTokensOfFile(dbId string, path string) error {
+	zap.S().Debugw("Deleting tokens of file from database",
+		"file_path", path,
+		"db_id", dbId)
+
+	// Open the database
+	db, err := openDb(dbId)
+	if err != nil {
+		return err
+	}
+
+	// Delete associated tokens
+	if err := db.
+		Where("path = ?", path).
+		Delete(&Token{}).Error; err != nil {
+		zap.S().Errorw(
+			"Failed to delete tokens of file from database",
+			"file_path", path,
+			"db_id", dbId,
+			"error", err)
+		return ErrDbOperation
+	}
+
 	return nil
 }
 
@@ -186,7 +206,7 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 		// Query distinct tokens
 		rows, err := db.Model(&Token{}).Distinct("value").Rows()
 		if err != nil {
-			yield(TokenResult{Err: err})
+			yield(TokenResult{Err: ErrDbOperation})
 			return
 		}
 		defer rows.Close()
@@ -195,7 +215,7 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 		for rows.Next() {
 			var token Token
 			if err := db.ScanRows(rows, &token); err != nil {
-				yield(TokenResult{Err: err})
+				yield(TokenResult{Err: ErrDbOperation})
 				return
 			}
 			if !yield(TokenResult{Token: token}) {
@@ -209,18 +229,21 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 func GetFiles(dbId string) ([]File, error) {
 	db, err := openDb(dbId)
 	if err != nil {
-		zap.S().Errorw("Failed to open database",
-			"db_id", dbId,
-			"error", err)
 		return []File{}, err
 	}
 
 	var files []File
-	result := db.Find(&files)
+	if err := db.Find(&files).Error; err != nil {
+		zap.S().Errorw("Failed to retrieve files from database",
+			"db_id", dbId,
+			"error", err)
+		return []File{}, ErrDbOperation
+	}
+
 	zap.S().Debugw("Retrieved files from database",
 		"file_count", len(files),
 		"db_id", dbId)
-	return files, result.Error
+	return files, nil
 }
 
 // openDb opens (or creates) a database with the given identifier.
@@ -247,7 +270,7 @@ func openDb(id string) (*gorm.DB, error) {
 			"db_id", id,
 			"db_path", dbPath,
 			"error", err)
-		return nil, err
+		return nil, ErrDbConnection
 	}
 	zap.S().Debugw("Opened database",
 		"db_id", id,
@@ -256,10 +279,18 @@ func openDb(id string) (*gorm.DB, error) {
 	// Perform migrations
 	// TODO: delete if error
 	if err := db.AutoMigrate(&Token{}); err != nil {
-		return nil, err
+		zap.S().Errorw("Failed to migrate database schema",
+			"entity", "token",
+			"db_id", id,
+			"error", err)
+		return nil, ErrDbOperation
 	}
 	if err := db.AutoMigrate(&File{}); err != nil {
-		return nil, err
+		zap.S().Errorw("Failed to migrate database schema",
+			"entity", "file",
+			"db_id", id,
+			"error", err)
+		return nil, ErrDbOperation
 	}
 
 	// Cache the opened database
