@@ -113,6 +113,9 @@ type model struct {
 	help help.Model
 	// spinner is the loading spinner view model.
 	spinner spinner.Model
+
+	// Err captures any error that occurs during TUI execution.
+	Err error
 }
 
 // cursor returns the current cursor position within the prompt.
@@ -329,7 +332,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case promptFetchedMsg:
 		if msg.err != nil {
-			println("An unexpected error occured")
+			m.Err = msg.err
 			return m, tea.Quit
 		}
 
@@ -361,9 +364,13 @@ func (m model) View() string {
 
 // Launch starts the TUI with the given text prompt as a scrollable typing
 // interface.
-func Launch(dirPath string) {
+func Launch(dirPath string) error {
 	p := tea.NewProgram(initialModel(dirPath))
-	if _, err := p.Run(); err != nil {
-		panic(err)
+	m, err := p.Run()
+	if err != nil {
+		return err
 	}
+
+	uiModel := m.(model)
+	return uiModel.Err
 }
