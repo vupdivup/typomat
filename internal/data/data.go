@@ -213,6 +213,9 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 		// Query distinct tokens
 		rows, err := db.Model(&Token{}).Distinct("value").Rows()
 		if err != nil {
+			zap.S().Errorw("Failed to query distinct tokens",
+				"db_id", dbId,
+				"error", err)
 			yield(TokenResult{Err: ErrDbOperation})
 			return
 		}
@@ -222,6 +225,9 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 		for rows.Next() {
 			var token Token
 			if err := db.ScanRows(rows, &token); err != nil {
+				zap.S().Errorw("Failed to scan token row",
+					"db_id", dbId,
+					"error", err)
 				yield(TokenResult{Err: ErrDbOperation})
 				return
 			}
