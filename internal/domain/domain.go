@@ -1,3 +1,4 @@
+// Package domain implements the core business logic of the application.
 package domain
 
 import (
@@ -18,18 +19,28 @@ import (
 var (
 	// dbId is the identifier of the current token database, static throughout
 	// the app lifecycle.
-	dbId         string
+	dbId string
+	// hasTokenized indicates whether the directory has already been tokenized.
+	// Set to true only once per app lifecycle.
 	hasTokenized bool = false
 )
 
 const (
+	// maxFileSize is the maximum file size (in bytes) eligible for
+	// tokenization.
 	maxFileSize = 1_000_000 // 1 MB
 
+	// minTokenLen is the minimum length of a token to be included.
 	minTokenLen = 2
+	// maxTokenLen is the maximum length of a token to be included.
 	maxTokenLen = 12
 
+	// maxWordLen is the maximum length of a word to be considered for
+	// tokenization.
 	maxWordLen = 24
 
+	// tokenBufferSize is the number of tokens to buffer before flushing to
+	// the database.
 	tokenBufferSize = 10000
 )
 
