@@ -3,6 +3,7 @@ package fileutils
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"time"
@@ -33,6 +34,18 @@ func IsTextFile(path string) (bool, error) {
 	}
 
 	return utf8.Valid(buf), nil
+}
+
+// DirExists checks if a directory exists at the given path.
+func DirExists(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return info.IsDir(), nil
 }
 
 // Size returns the size of the file at the given path in bytes.
