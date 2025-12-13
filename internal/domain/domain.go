@@ -40,13 +40,27 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 		"dir_path", dirPath,
 		"max_len", maxLen)
 
+	// Check if directory exists
+	dirExists, err := fileutils.DirExists(dirPath)
+	if err != nil {
+		zap.S().Errorw("Failed to check if directory exists",
+			"dir_path", dirPath,
+			"error", err)
+		return "", ErrFileOperation
+	}
+	if !dirExists {
+		zap.S().Errorw("Directory does not exist",
+			"dir_path", dirPath)
+		return "", ErrInvalidDirPath
+	}
+
 	// Normalize path
 	absPath, err := filepath.Abs(dirPath)
 	if err != nil {
 		zap.S().Errorw("Failed to get absolute path",
 			"dir_path", dirPath,
 			"error", err)
-		return "", err
+		return "", ErrInvalidDirPath
 	}
 	dbId = absPath
 
@@ -81,16 +95,14 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	flushTokens := func() error {
-		// Delete tokens and file entries for changed or new files to purge
-		// token sets
+		// Delete tokens of changed files for subsequent re-insertion
 		for _, file := range changedFiles {
-			// TODO: delete tokens only?
-			if err := data.DeleteFile(dbId, file, true); err != nil {
+			if err := data.DeleteTokensOfFile(dbId, file.Path); err != nil {
 				return err
 			}
 		}
 
-		// (Re-)upload files previously deleted
+		// Update changed files
 		if err := data.UpsertFiles(dbId, changedFiles); err != nil {
 			return err
 		}
@@ -104,26 +116,33 @@ func tokenizeDirectory(dirPath string) error {
 			return nil
 		}
 
+		// Flush tokens to database
 		if err := data.UpsertTokens(dbId, tokens); err != nil {
 			return err
 		}
 
-		changedFiles = changedFiles[:0]
-		newFiles = newFiles[:0]
-		tokens = tokens[:0]
+		changedFiles = nil
+		newFiles = nil
+		tokens = nil
 		return nil
 	}
 
 	// Get files in directory, recursively
 	paths, err := git.LsFiles(dirPath)
 	if err != nil {
-		return err
+		zap.S().Errorw("Failed to list files in directory",
+			"dir_path", dirPath,
+			"error", err)
+		return ErrFileOperation
 	}
 
 	for _, filepath := range paths {
 		// Exclude unwanted files
 		if isDesired, err := isFileEligible(filepath); err != nil {
-			return err
+			zap.S().Errorw("Failed to check if file is eligible",
+				"file_path", filepath,
+				"error", err)
+			return ErrFileOperation
 		} else if !isDesired {
 			zap.S().Debugw("Skipping ineligible file",
 				"file_path", filepath)
@@ -133,11 +152,17 @@ func tokenizeDirectory(dirPath string) error {
 		// Calculate size and mtime
 		size, err := fileutils.Size(filepath)
 		if err != nil {
-			return err
+			zap.S().Errorw("Failed to get file size",
+				"file_path", filepath,
+				"error", err)
+			return ErrFileOperation
 		}
 		mtime, err := fileutils.Mtime(filepath)
 		if err != nil {
-			return err
+			zap.S().Errorw("Failed to get file mtime",
+				"file_path", filepath,
+				"error", err)
+			return ErrFileOperation
 		}
 
 		file := data.File{Path: filepath, Size: size, Mtime: mtime}
@@ -146,12 +171,7 @@ func tokenizeDirectory(dirPath string) error {
 			// File from db still exists, so remove from deletion list
 			delete(removedFiles, filepath)
 
-			hasFileChanged, err := hasFileChanged(dbFile)
-			if err != nil {
-				return err
-			}
-
-			if !hasFileChanged {
+			if file.VersionEquals(dbFile) {
 				// File unchanged, skip tokenization
 				zap.S().Debugw("Skipping unchanged file",
 					"file_path", filepath)
@@ -172,7 +192,10 @@ func tokenizeDirectory(dirPath string) error {
 		// Tokenize file
 		fileTokens, err := tokenizer.TokenizeFile(filepath, isWordEligible)
 		if err != nil {
-			return err
+			zap.S().Errorw("Failed to tokenize file",
+				"file_path", filepath,
+				"error", err)
+			return ErrTextProcessing
 		}
 
 		// Retrieve first occurence of each token
@@ -252,12 +275,18 @@ func generatePrompt(maxLen int) (string, error) {
 func isFileEligible(fpath string) (bool, error) {
 	stat, err := os.Stat(fpath)
 	if err != nil {
-		return false, err
+		zap.S().Errorw("Failed to stat file",
+			"file_path", fpath,
+			"error", err)
+		return false, ErrFileOperation
 	}
 
 	isTextFile, err := fileutils.IsTextFile(fpath)
 	if err != nil {
-		return false, err
+		zap.S().Errorw("Failed to determine if file is text",
+			"file_path", fpath,
+			"error", err)
+		return false, ErrFileOperation
 	}
 
 	return isTextFile && stat.Size() < maxFileSize, nil
@@ -273,20 +302,4 @@ func isTokenEligible(token string) bool {
 func isWordEligible(word string) bool {
 	runes := []rune(word)
 	return len(runes) < maxWordLen
-}
-
-// hasFileChanged checks if the file has changed compared to the stored
-// metadata.
-// It compares size and modification time.
-func hasFileChanged(file data.File) (bool, error) {
-	size, err := fileutils.Size(file.Path)
-	if err != nil {
-		return false, err
-	}
-
-	mtime, err := fileutils.Mtime(file.Path)
-	if err != nil {
-		return false, err
-	}
-	return size != file.Size || mtime.Unix() != file.Mtime.Unix(), nil
 }
