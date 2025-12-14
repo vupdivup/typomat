@@ -11,11 +11,21 @@ import (
 )
 
 // renderTitleBar renders the title bar of the application.
-func renderTitleBar() string {
+func renderTitleBar(m model) string {
 	left := mutedStyle.Render("╭" + "──")
 
+	// * after title indicates break state
+	var breakMarker string
+	switch m.appState {
+	case StateBreak:
+		breakMarker = bodyStyle.Render("*")
+	default:
+		breakMarker = ""
+	}
+
 	// The title 'sits' on the upper border line
-	title := accentStyle.Render(" " + config.ProductName + " ")
+	title := accentStyle.Render(" "+config.AppName) +
+		mutedStyle.Render("()") + breakMarker + " "
 
 	restWidth := windowOuterWidth - lipgloss.Width(left) - lipgloss.Width(title)
 	right := mutedStyle.Render(strings.Repeat("─", restWidth-1) + "╮")
@@ -160,5 +170,5 @@ func renderWindow(m model) string {
 
 // renderApp renders the entire application UI.
 func renderApp(m model) string {
-	return "\n" + renderTitleBar() + "\n" + renderWindow(m) + "\n"
+	return "\n" + renderTitleBar(m) + "\n" + renderWindow(m) + "\n"
 }
