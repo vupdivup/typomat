@@ -13,9 +13,7 @@ import (
 
 const (
 	// AppName is the name of the application.
-	AppName = "recital"
-	// ProductName is the product name of the application.
-	ProductName = "Recital"
+	AppName = "typeLines"
 )
 
 var (
@@ -23,6 +21,7 @@ var (
 	dbDir  string
 )
 
+// TODO: no panics
 func init() {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
