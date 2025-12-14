@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vupdivup/recital/internal/data"
-	"github.com/vupdivup/recital/pkg/fileutils"
-	"github.com/vupdivup/recital/pkg/git"
-	"github.com/vupdivup/recital/pkg/random"
-	"github.com/vupdivup/recital/pkg/random/lazy"
-	"github.com/vupdivup/recital/pkg/tokenizer"
+	"github.com/vupdivup/typelines/internal/data"
+	"github.com/vupdivup/typelines/pkg/fileutils"
+	"github.com/vupdivup/typelines/pkg/git"
+	"github.com/vupdivup/typelines/pkg/random"
+	"github.com/vupdivup/typelines/pkg/random/lazy"
+	"github.com/vupdivup/typelines/pkg/tokenizer"
 	"go.uber.org/zap"
 )
 

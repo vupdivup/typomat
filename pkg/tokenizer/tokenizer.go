@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/vupdivup/recital/pkg/alphabet"
+	"github.com/vupdivup/typelines/pkg/alphabet"
 )
 
 type Case int

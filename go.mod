@@ -1,4 +1,4 @@
-module github.com/vupdivup/recital
+module github.com/vupdivup/typelines
 
 go 1.25.4
 

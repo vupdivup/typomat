@@ -6,8 +6,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vupdivup/recital/internal/config"
-	"github.com/vupdivup/recital/pkg/textutils"
+	"github.com/vupdivup/typelines/internal/config"
+	"github.com/vupdivup/typelines/pkg/textutils"
 )
 
 // renderTitleBar renders the title bar of the application.

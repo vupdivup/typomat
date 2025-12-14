@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/vupdivup/recital/internal/config"
-	"github.com/vupdivup/recital/internal/ui"
+	"github.com/vupdivup/typelines/internal/config"
+	"github.com/vupdivup/typelines/internal/ui"
 	"go.uber.org/zap"
 )
 
