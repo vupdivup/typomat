@@ -200,24 +200,12 @@ func tokenizeDirectory(dirPath string) error {
 			newFiles = append(newFiles, file)
 		}
 
-		// Tokenize file
-		fileTokens, err := tokenizer.TokenizeFile(filepath, isWordEligible)
+		// Tokenize file and collect unique tokens
+		uniqueFileTokens, err := getUniqueTokensOfFile(filepath)
 		if err != nil {
-			zap.S().Errorw("Failed to tokenize file",
-				"file_path", filepath,
-				"error", err)
-			return ErrTextProcessing
+			return err
 		}
-
-		// Retrieve first occurence of each token
-		lookup := map[string]bool{}
-		for _, fileToken := range fileTokens {
-			if _, ok := lookup[fileToken]; isTokenEligible(fileToken) && !ok {
-				tokens = append(
-					tokens, data.Token{Path: filepath, Value: fileToken})
-				lookup[fileToken] = true
-			}
-		}
+		tokens = append(tokens, uniqueFileTokens...)
 
 		if len(tokens) > tokenBufferSize {
 			if err := flushTokens(); err != nil {
@@ -241,6 +229,32 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	return nil
+}
+
+// getUniqueTokensOfFile tokenizes the specified file and returns the unique
+// eligible tokens.
+func getUniqueTokensOfFile(path string) ([]data.Token, error) {
+	// Tokenize file
+	allTokens, err := tokenizer.TokenizeFile(path, isWordEligible)
+	if err != nil {
+		zap.S().Errorw("Failed to tokenize file",
+			"file_path", path,
+			"error", err)
+		return nil, ErrTextProcessing
+	}
+
+	// Retrieve first occurrence of each token
+	uniqueTokens := []data.Token{}
+	lookup := map[string]bool{}
+	for _, fileToken := range allTokens {
+		if _, ok := lookup[fileToken]; isTokenEligible(fileToken) && !ok {
+			uniqueTokens = append(
+				uniqueTokens, data.Token{Path: path, Value: fileToken})
+			lookup[fileToken] = true
+		}
+	}
+
+	return uniqueTokens, nil
 }
 
 // generatePrompt creates a prompt of up to maxLen characters by randomly
