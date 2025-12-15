@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vupdivup/typelines/pkg/fileutils"
 	"go.uber.org/zap"
 )
 
@@ -21,29 +22,30 @@ var (
 	dbDir  string
 )
 
-// TODO: no panics
-func init() {
+// Init initializes the configuration by setting up necessary directories
+// and configuring the logger.
+func Init() error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Create application directory
 	appDir = filepath.Join(configDir, AppName)
 	if err := os.MkdirAll(appDir, 0o755); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Create database directory
 	dbDir = filepath.Join(appDir, "db")
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Create logs directory
 	logDir := filepath.Join(appDir, "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
-		panic(err)
+		return err
 	}
 
 	// Determine log file path
@@ -61,9 +63,10 @@ func init() {
 	config.OutputPaths = []string{logPath}
 	logger, err := config.Build()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	zap.ReplaceGlobals(logger)
+	return nil
 }
 
 // AppDir returns the application directory path.
@@ -74,4 +77,10 @@ func AppDir() string {
 // DbDir returns the directory path where database files are stored.
 func DbDir() string {
 	return dbDir
+}
+
+// PurgeCache deletes all cached data stored in the database directory.
+func PurgeCache() error {
+	zap.S().Info("Purging application cache")
+	return fileutils.RemoveChildren(dbDir)
 }

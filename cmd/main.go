@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/vupdivup/typelines/internal/config"
@@ -17,6 +16,16 @@ var rootCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	purge, err := cmd.Flags().GetBool("purge")
+	if err != nil {
+		return err
+	}
+	if purge {
+		if err := config.PurgeCache(); err != nil {
+			return err
+		}
+	}
+	
 	dirPath := "."
 	if len(args) > 0 {
 		dirPath = args[0]
@@ -25,11 +34,28 @@ func run(cmd *cobra.Command, args []string) error {
 	return ui.Launch(dirPath)
 }
 
+func init() {
+	rootCmd.SilenceErrors = true
+	rootCmd.Flags().BoolP(
+		"purge", "p", false, "purge application cache on startup")
+}
+
 func main() {
-	defer zap.S().Sync()
+	// Defer zap logger sync
+	defer func() {
+		if err := zap.S().Sync(); err != nil {
+			println("Error:", err.Error())
+		}
+	}()
+
+	// Configure application
+	if err := config.Init(); err != nil {
+		zap.S().Error("Failed to initialize configuration", "error", err)
+		println("Error:", err.Error())
+	}
+
+	// Run main command
 	if err := rootCmd.Execute(); err != nil {
-		// Exit silently on error
-		// Error message is diplayed through the runE handler anyway
-		os.Exit(0)
+		println("Error:", err.Error())
 	}
 }
