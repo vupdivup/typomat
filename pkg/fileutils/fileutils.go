@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 	"unicode/utf8"
 )
@@ -81,4 +82,21 @@ func GetFingerprint(path string) (string, error) {
 	}
 
 	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+// RemoveChildren removes all files and subdirectories within the specified
+// directory.
+func RemoveChildren(dirPath string) error {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		entryPath := filepath.Join(dirPath, entry.Name())
+		if err := os.RemoveAll(entryPath); err != nil {
+			return err
+		}
+	}
+	return nil
 }
