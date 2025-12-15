@@ -14,6 +14,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 )
 
 const (
@@ -277,7 +278,9 @@ func openDb(id string) (*gorm.DB, error) {
 	dbPath := filepath.Join(config.DbDir(), hashedId+".db")
 
 	// Open (or create) the SQLite database
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		zap.S().Errorw("Failed to open database",
 			"db_id", id,
