@@ -25,7 +25,7 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	
+
 	dirPath := "."
 	if len(args) > 0 {
 		dirPath = args[0]
@@ -36,26 +36,34 @@ func run(cmd *cobra.Command, args []string) error {
 
 func init() {
 	rootCmd.SilenceErrors = true
+	rootCmd.SilenceUsage = true
 	rootCmd.Flags().BoolP(
-		"purge", "p", false, "purge application cache on startup")
+		"purge", "p", false, "purge application cache")
 }
 
 func main() {
 	// Defer zap logger sync
 	defer func() {
 		if err := zap.S().Sync(); err != nil {
-			println("Error:", err.Error())
+			printErr(err)
 		}
 	}()
 
 	// Configure application
 	if err := config.Init(); err != nil {
 		zap.S().Error("Failed to initialize configuration", "error", err)
-		println("Error:", err.Error())
+		printErr(err)
 	}
 
 	// Run main command
 	if err := rootCmd.Execute(); err != nil {
-		println("Error:", err.Error())
+		printErr(err)
 	}
+}
+
+// printErr prints an error message to the console along with
+// the usage instructions.
+func printErr(err error) {
+	fmt.Printf("Error: %s\n\n", err.Error())
+	println(rootCmd.UsageString())
 }
