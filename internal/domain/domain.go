@@ -2,13 +2,13 @@
 package domain
 
 import (
+	"context"
 	"math"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/vupdivup/typelines/internal/data"
 	"github.com/vupdivup/typelines/pkg/fileutils"
@@ -17,6 +17,7 @@ import (
 	"github.com/vupdivup/typelines/pkg/random/lazy"
 	"github.com/vupdivup/typelines/pkg/tokenizer"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -185,18 +186,20 @@ func ProcessDirectory(dirPath string) error {
 		"workers", numWorkers)
 
 	// Process files concurrently
-	group := sync.WaitGroup{}
+	group, ctx := errgroup.WithContext(context.Background())
 	results := make(chan fileProcessingResult)
 	for batch := range pathBatches {
-		group.Go(func() {
-			processFileBatch(batch, dbFiles, results)
+		group.Go(func() error {
+			return processFileBatch(batch, dbFiles, results, ctx)
 		})
 	}
 
-	// TODO: context cancellation
+	// Close results channel when all processing is done
+	groupErr := make(chan error, 1)
 	go func() {
-		group.Wait()
+		err := group.Wait()
 		close(results)
+		groupErr <- err
 	}()
 
 	// Receive file processed signals and flush tokens as needed
@@ -238,6 +241,11 @@ func ProcessDirectory(dirPath string) error {
 		}
 	}
 
+	// Check for errors from goroutines
+	if err := <-groupErr; err != nil {
+		return err
+	}
+
 	// Flush remaining tokens
 	if err := flushTokens(); err != nil {
 		return err
@@ -259,12 +267,25 @@ func ProcessDirectory(dirPath string) error {
 // provided channel.
 func processFileBatch(
 	paths []string, dbFiles map[string]data.File,
-	results chan fileProcessingResult,
-) {
+	results chan fileProcessingResult, ctx context.Context,
+) error {
 	for _, path := range paths {
+		// Process file
+		// TODO: is this necessary? Can we just skip a file?
 		result := processFile(path, dbFiles)
-		results <- result
+		if result.err != nil {
+			return result.err
+		}
+
+		// Check for context cancellation
+		select {
+		case results <- result:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
+
+	return nil
 }
 
 // processFile processes a single file and returns the processing results.
