@@ -177,7 +177,7 @@ func ProcessDirectory(dirPath string) error {
 	}
 
 	// Prepare for concurrent processing
-	numWorkers := runtime.NumCPU() * 2
+	numWorkers := runtime.NumCPU()
 	pathBatches := slices.Chunk(paths, len(paths)/numWorkers)
 	zap.S().Infow("Starting file processing",
 		"dir_path", dirPath,
