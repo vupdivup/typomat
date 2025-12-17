@@ -5,7 +5,10 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/vupdivup/typelines/internal/data"
 	"github.com/vupdivup/typelines/pkg/fileutils"
@@ -28,7 +31,7 @@ var (
 const (
 	// maxFileSize is the maximum file size (in bytes) eligible for
 	// tokenization.
-	maxFileSize = 1_000_000 // 1 MB
+	maxFileSize = 24_000_000 // 24 MB
 
 	// minTokenLen is the minimum length of a token to be included.
 	minTokenLen = 2
@@ -43,6 +46,34 @@ const (
 	// the database.
 	tokenBufferSize = 10000
 )
+
+// FileStatus represents the status of a file with respect to the database.
+type FileStatus int
+
+const (
+	// FileStatusUnchanged indicates the file is unchanged since last
+	// tokenization.
+	FileStatusUnchanged FileStatus = iota
+	// FileStatusChanged indicates the file has changed since last tokenization.
+	FileStatusChanged
+	// FileStatusNew indicates the file is new and not present in the database.
+	FileStatusNew
+	// FileStatusIneligible indicates the file is ineligible for tokenization.
+	FileStatusIneligible
+)
+
+// fileProcessingResult encapsulates the result of processing a file.
+type fileProcessingResult struct {
+	// file is the processed file metadata.
+	file data.File
+	// status is the status of the file with respect to the database.
+	status FileStatus
+	// tokens are the unique tokens extracted from the file. Empty if file
+	// is unchanged or ineligible.
+	tokens []data.Token
+	// err is any error encountered during processing.
+	err error
+}
 
 // Prompt generates a prompt of the maximum specified character length
 // from tokens of the specified directory.
@@ -77,7 +108,7 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 
 	if !hasTokenized {
 		// Tokenize directory if not done already (1st call)
-		if err := tokenizeDirectory(absPath); err != nil {
+		if err := processDirectory(absPath); err != nil {
 			return "", err
 		}
 		hasTokenized = true
@@ -86,23 +117,24 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 	return generatePrompt(maxLen)
 }
 
-// tokenizeDirectory tokenizes all eligible files in the specified directory
+// processDirectory tokenizes all eligible files in the specified directory
 // and stores the tokens in the database.
-func tokenizeDirectory(dirPath string) error {
-	tokens := []data.Token{}
-	changedFiles := []data.File{}
-	newFiles := []data.File{}
+func processDirectory(dirPath string) error {
+	var tokens []data.Token
+	var changedFiles []data.File
+	var newFiles []data.File
 
+	dbFiles := make(map[string]data.File)
+	removedFiles := make(map[string]data.File)
+
+	// Populate DB file lookup and removed files lookup
 	dbFilesTmp, err := data.GetFiles(dbId)
 	if err != nil {
 		return err
 	}
-
-	dbFiles := map[string]data.File{}
-	removedFilesLookup := map[string]data.File{}
 	for _, dbFile := range dbFilesTmp {
 		dbFiles[dbFile.Path] = dbFile
-		removedFilesLookup[dbFile.Path] = dbFile
+		removedFiles[dbFile.Path] = dbFile
 	}
 
 	flushTokens := func() error {
@@ -121,10 +153,6 @@ func tokenizeDirectory(dirPath string) error {
 		// Upload new files
 		if err := data.UpsertFiles(dbId, newFiles); err != nil {
 			return err
-		}
-
-		if len(tokens) == 0 {
-			return nil
 		}
 
 		// Flush tokens to database
@@ -147,39 +175,62 @@ func tokenizeDirectory(dirPath string) error {
 		return ErrFileOperation
 	}
 
-	for _, path := range paths {
-		result := processFile(path, dbFiles)
+	// Prepare for concurrent processing
+	numWorkers := runtime.NumCPU() * 2
+	pathBatches := slices.Chunk(paths, len(paths)/numWorkers)
+	zap.S().Infow("Starting file processing",
+		"dir_path", dirPath,
+		"file_count", len(paths),
+		"workers", numWorkers)
+
+	// Process files concurrently
+	group := sync.WaitGroup{}
+	results := make(chan fileProcessingResult)
+	for batch := range pathBatches {
+		group.Go(func() {
+			processFileBatch(batch, dbFiles, results)
+		})
+	}
+
+	// TODO: context cancellation
+	go func() {
+		group.Wait()
+		close(results)
+	}()
+
+	// Receive file processed signals and flush tokens as needed
+	for result := range results {
 		if result.err != nil {
 			return result.err
 		}
 
-		// Remove from removed files lookup to keep track of deleted files
-		delete(removedFilesLookup, path)
+		// File still exists, remove from removed files lookup
+		delete(removedFiles, result.file.Path)
 
 		switch result.status {
 		case FileStatusIneligible:
-			zap.S().Infow("Skipping ineligible file",
-				"file_path", path)
+			zap.S().Debugw("Skipping ineligible file",
+				"file_path", result.file.Path)
 			continue
 		case FileStatusUnchanged:
-			zap.S().Infow("Skipping unchanged file",
-				"file_path", path)
+			zap.S().Debugw("Skipping unchanged file",
+				"file_path", result.file.Path)
 			continue
 		case FileStatusChanged:
-			zap.S().Infow("Processing changed file",
-				"file_path", path,
+			zap.S().Debugw("Processing changed file",
+				"file_path", result.file.Path,
 				"token_count", len(result.tokens))
 			changedFiles = append(changedFiles, result.file)
 		case FileStatusNew:
-			zap.S().Infow("Processing new file",
-				"file_path", path,
+			zap.S().Debugw("Processing new file",
+				"file_path", result.file.Path,
 				"token_count", len(result.tokens))
 			newFiles = append(newFiles, result.file)
 		}
 
-		// Append unique tokens of the file and flush if buffer exceeded
+		// Add received tokens to token buffer and flush if needed
 		tokens = append(tokens, result.tokens...)
-		if len(tokens) > tokenBufferSize {
+		if len(tokens) >= tokenBufferSize {
 			if err := flushTokens(); err != nil {
 				return err
 			}
@@ -192,7 +243,7 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	// Delete tokens and entries of files that don't exist anymore
-	for _, file := range removedFilesLookup {
+	for _, file := range removedFiles {
 		zap.S().Infow("Deleting removed file from database",
 			"file_path", file.Path)
 		if err := data.DeleteFile(dbId, file, true); err != nil {
@@ -201,6 +252,80 @@ func tokenizeDirectory(dirPath string) error {
 	}
 
 	return nil
+}
+
+// processFileBatch processes a batch of files and sends the results to the
+// provided channel.
+func processFileBatch(
+	paths []string, dbFiles map[string]data.File,
+	results chan fileProcessingResult,
+) {
+	for _, path := range paths {
+		result := processFile(path, dbFiles)
+		results <- result
+	}
+}
+
+// processFile processes a single file and returns the processing results.
+func processFile(
+	path string, dbFiles map[string]data.File,
+) fileProcessingResult {
+	// Exclude unwanted files
+	if isDesired, err := isFileEligible(path); err != nil {
+		zap.S().Errorw("Failed to check if file is eligible",
+			"file_path", path,
+			"error", err)
+		return fileProcessingResult{err: ErrFileOperation}
+	} else if !isDesired {
+		return fileProcessingResult{
+			file: data.File{Path: path}, status: FileStatusIneligible,
+		}
+	}
+
+	// Calculate size and mtime
+	size, err := fileutils.Size(path)
+	if err != nil {
+		zap.S().Errorw("Failed to get file size",
+			"file_path", path,
+			"error", err)
+		return fileProcessingResult{err: ErrFileOperation}
+	}
+	mtime, err := fileutils.Mtime(path)
+	if err != nil {
+		zap.S().Errorw("Failed to get file mtime",
+			"file_path", path,
+			"error", err)
+		return fileProcessingResult{err: ErrFileOperation}
+	}
+
+	file := data.File{Path: path, Size: size, Mtime: mtime}
+
+	// Determine file status
+	var fileStatus FileStatus
+	if dbFile, ok := dbFiles[path]; ok {
+		if file.VersionEquals(dbFile) {
+			fileStatus = FileStatusUnchanged
+		} else {
+			fileStatus = FileStatusChanged
+		}
+	} else {
+		fileStatus = FileStatusNew
+	}
+
+	if fileStatus == FileStatusUnchanged {
+		// File unchanged, skip tokenization
+		return fileProcessingResult{file: file, status: fileStatus}
+	}
+
+	// Tokenize file and collect unique tokens
+	uniqueFileTokens, err := getUniqueTokensOfFile(path)
+	if err != nil {
+		return fileProcessingResult{err: err}
+	}
+
+	return fileProcessingResult{
+		file: file, tokens: uniqueFileTokens, status: fileStatus,
+	}
 }
 
 // getUniqueTokensOfFile tokenizes the specified file and returns the unique
@@ -227,92 +352,6 @@ func getUniqueTokensOfFile(path string) ([]data.Token, error) {
 	}
 
 	return uniqueTokens, nil
-}
-
-// FileStatus represents the status of a file with respect to the database.
-type FileStatus int
-
-const (
-	// FileStatusUnchanged indicates the file is unchanged since last
-	// tokenization.
-	FileStatusUnchanged FileStatus = iota
-	// FileStatusChanged indicates the file has changed since last tokenization.
-	FileStatusChanged
-	// FileStatusNew indicates the file is new and not present in the database.
-	FileStatusNew
-	// FileStatusIneligible indicates the file is ineligible for tokenization.
-	FileStatusIneligible
-)
-
-// FileProcessingResult encapsulates the result of processing a file.
-type FileProcessingResult struct {
-	// file is the processed file metadata.
-	file data.File
-	// status is the status of the file with respect to the database.
-	status FileStatus
-	// tokens are the unique tokens extracted from the file. Empty if file
-	// is unchanged or ineligible.
-	tokens []data.Token
-	// err is any error encountered during processing.
-	err error
-}
-
-// processFile processes a single file and returns its status along with
-// unique tokens if applicable.
-// It requires a lookup map of existing database files for status determination.
-func processFile(path string, dbFileLookup map[string]data.File) FileProcessingResult {
-	// Exclude unwanted files
-	if isDesired, err := isFileEligible(path); err != nil {
-		zap.S().Errorw("Failed to check if file is eligible",
-			"file_path", path,
-			"error", err)
-		return FileProcessingResult{err: ErrFileOperation}
-	} else if !isDesired {
-		return FileProcessingResult{file: data.File{Path: path}, status: FileStatusIneligible}
-	}
-
-	// Calculate size and mtime
-	size, err := fileutils.Size(path)
-	if err != nil {
-		zap.S().Errorw("Failed to get file size",
-			"file_path", path,
-			"error", err)
-		return FileProcessingResult{err: ErrFileOperation}
-	}
-	mtime, err := fileutils.Mtime(path)
-	if err != nil {
-		zap.S().Errorw("Failed to get file mtime",
-			"file_path", path,
-			"error", err)
-		return FileProcessingResult{err: ErrFileOperation}
-	}
-
-	file := data.File{Path: path, Size: size, Mtime: mtime}
-
-	// Determine file status
-	var fileStatus FileStatus
-	if dbFile, ok := dbFileLookup[path]; ok {
-		if file.VersionEquals(dbFile) {
-			fileStatus = FileStatusUnchanged
-		} else {
-			fileStatus = FileStatusChanged
-		}
-	} else {
-		fileStatus = FileStatusNew
-	}
-
-	if fileStatus == FileStatusUnchanged {
-		// File unchanged, skip tokenization
-		return FileProcessingResult{file: file, status: fileStatus}
-	}
-
-	// Tokenize file and collect unique tokens
-	uniqueFileTokens, err := getUniqueTokensOfFile(path)
-	if err != nil {
-		return FileProcessingResult{err: err}
-	}
-
-	return FileProcessingResult{file: file, tokens: uniqueFileTokens, status: fileStatus}
 }
 
 // generatePrompt creates a prompt of up to maxLen characters by randomly
