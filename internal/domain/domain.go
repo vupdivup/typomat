@@ -77,6 +77,7 @@ type fileProcessingResult struct {
 
 // Prompt generates a prompt of the maximum specified character length
 // from tokens of the specified directory.
+// This is the main entry point of the domain package.
 func Prompt(dirPath string, maxLen int) (string, error) {
 	zap.S().Infow("Generating prompt from directory text content",
 		"dir_path", dirPath,
@@ -108,7 +109,7 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 
 	if !hasTokenized {
 		// Tokenize directory if not done already (1st call)
-		if err := processDirectory(absPath); err != nil {
+		if err := ProcessDirectory(absPath); err != nil {
 			return "", err
 		}
 		hasTokenized = true
@@ -117,9 +118,9 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 	return generatePrompt(maxLen)
 }
 
-// processDirectory tokenizes all eligible files in the specified directory
+// ProcessDirectory tokenizes all eligible files in the specified directory
 // and stores the tokens in the database.
-func processDirectory(dirPath string) error {
+func ProcessDirectory(dirPath string) error {
 	var tokens []data.Token
 	var changedFiles []data.File
 	var newFiles []data.File
