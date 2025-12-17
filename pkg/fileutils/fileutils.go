@@ -7,13 +7,22 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 	"unicode/utf8"
 )
 
 // IsTextFile checks if the file at the given path is a text file by reading a
 // portion of its content.
+// Files with common binary file extensions are ruled out without reading.
 func IsTextFile(path string) (bool, error) {
+	// Exit fast for known binary file extensions
+	// TODO: test this
+	ext := filepath.Ext(path)
+	if slices.Contains(binaryExtensions, ext) {
+		return false, nil
+	}
+
 	// Number of bytes to read for checking text validity
 	lookahead := 512
 
