@@ -55,9 +55,9 @@ var (
 			Padding(canvasPaddingVertical, canvasPaddingHorizontal).
 			Height(4)
 
-	accentColor = lipgloss.Color("75")
-	bodyColor   = lipgloss.Color("252")
-	mutedColor  = lipgloss.Color("244")
+	accentColor = lipgloss.Color("179")
+	bodyColor   = lipgloss.Color("251")
+	mutedColor  = lipgloss.Color("240")
 	errorColor  = lipgloss.Color("167")
 
 	accentStyle = lipgloss.NewStyle().Foreground(accentColor)
