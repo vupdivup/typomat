@@ -14,7 +14,7 @@ import (
 
 const (
 	// AppName is the name of the application.
-	AppName = "typeLines"
+	AppName = "typeline"
 )
 
 var (
@@ -43,6 +43,7 @@ func Init() error {
 	}
 
 	// Create logs directory
+	// TODO: purge old logs
 	logDir := filepath.Join(appDir, "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return err
