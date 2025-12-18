@@ -255,7 +255,6 @@ func (m model) handleCtrlBackspace() model {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
-	// FIXME: don't paint if initial error
 	case initMsg:
 		var cmd tea.Cmd
 		m, cmd = m.load().fetchMorePromptsIfNeeded()
@@ -356,6 +355,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the TUI interface.
 func (m model) View() string {
+	// If there was an error, exit without rendering the app.
+	if m.Err != nil {
+		return "\n"
+	}
+
 	return renderApp(m)
 }
 
