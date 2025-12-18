@@ -255,20 +255,35 @@ func (m model) handleCtrlBackspace() model {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
+	// FIXME: don't paint if initial error
 	case initMsg:
 		var cmd tea.Cmd
 		m, cmd = m.load().fetchMorePromptsIfNeeded()
 		return m, tea.Batch(m.spinner.Tick, cmd)
 
 	case tea.KeyMsg:
-		// Quit if Ctrl+C is pressed
-		if key.Matches(msg, globalKeys.Quit) {
-			return m, tea.Quit
-		}
+		switch m.appState {
+		case StateBreak:
+			switch {
+			case key.Matches(msg, breakKeys.Quit):
+				return m, tea.Quit
+			case key.Matches(msg, breakKeys.Restart):
+				// Check if more prompts are available
+				if len(m.promptPool) == 0 {
+					var cmd tea.Cmd
+					m, cmd = m.load().fetchMorePromptsIfNeeded()
+					return m, tea.Batch(cmd, m.spinner.Tick)
+				}
 
-		if m.appState == StateSession || m.appState == StateReady {
-			if key.Matches(msg, sessionKeys.Stop) {
-				return m.stop(), nil
+				// Load next prompt from pool
+				m = m.consumePrompt().ready()
+
+				return m.fetchMorePromptsIfNeeded()
+			}
+
+		case StateSession, StateReady:
+			if key.Matches(msg, sessionKeys.Quit) {
+				return m, tea.Quit
 			}
 
 			switch msg.String() {
@@ -309,24 +324,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor() >= len(promptRunes) {
 					return m.stop(), nil
 				}
-			}
-		} else {
-			switch {
-			case key.Matches(msg, breakKeys.Restart):
-				// Check if more prompts are available
-				if len(m.promptPool) == 0 {
-					var cmd tea.Cmd
-					m, cmd = m.load().fetchMorePromptsIfNeeded()
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
-
-				// Load next prompt from pool
-				m = m.consumePrompt().ready()
-
-				return m.fetchMorePromptsIfNeeded()
-
-			case key.Matches(msg, breakKeys.Quit):
-				return m, tea.Quit
 			}
 		}
 

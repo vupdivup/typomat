@@ -4,26 +4,14 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 )
 
-// globalKeyMap defines key bindings that are active globally.
-type globalKeyMap struct {
-	Quit key.Binding
-}
-
-// globalKeys holds the global key bindings.
-var globalKeys = globalKeyMap{
-	Quit: key.NewBinding(
-		key.WithKeys("ctrl+c"),
-	),
-}
-
 // sessionKeyMap defines key bindings for the typing session UI.
 type sessionKeyMap struct {
-	Stop key.Binding
+	Quit key.Binding
 }
 
 // ShortHelp returns key bindings to be shown in the mini help view.
 func (k sessionKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Stop}
+	return []key.Binding{k.Quit}
 }
 
 // FullHelp returns key bindings to be shown in the expanded help view.
@@ -33,21 +21,21 @@ func (k sessionKeyMap) FullHelp() [][]key.Binding {
 
 // sessionKeys holds the key bindings for the typing session UI.
 var sessionKeys = sessionKeyMap{
-	Stop: key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "stop"),
+	Quit: key.NewBinding(
+		key.WithKeys("esc", "ctrl+c"),
+		key.WithHelp("esc", "quit"),
 	),
 }
 
 // breakKeyMap defines key bindings for the break screen UI.
 type breakKeyMap struct {
-	Restart key.Binding
 	Quit    key.Binding
+	Restart key.Binding
 }
 
 // ShortHelp returns key bindings to be shown in the mini help view.
 func (k breakKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Restart, k.Quit}
+	return []key.Binding{k.Quit, k.Restart}
 }
 
 // FullHelp returns key bindings to be shown in the expanded help view.
@@ -57,12 +45,12 @@ func (k breakKeyMap) FullHelp() [][]key.Binding {
 
 // breakKeys holds the key bindings for the break screen UI.
 var breakKeys = breakKeyMap{
-	Restart: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "restart"),
-	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "esc"),
-		key.WithHelp("q", "quit"),
+		key.WithKeys("esc", "ctrl+c"),
+		key.WithHelp("esc", "quit"),
+	),
+	Restart: key.NewBinding(
+		key.WithKeys(" "),
+		key.WithHelp("space", "retry"),
 	),
 }
