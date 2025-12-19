@@ -50,3 +50,29 @@ func TestGetFingerprint(t *testing.T) {
 		assert.Equal(t, c.want, got)
 	}
 }
+
+func TestDirExists(t *testing.T) {
+	cases := []struct {
+		relPath string
+		want    bool
+	}{
+		{"testdata/dir_exists/parent", true},
+		{"testdata/dir_exists/parent/child", true},
+		{"testdata/dir_exists/nonexistent", false},
+		{"/nonexistent/absolute/path", false},
+	}
+
+	for _, c := range cases {
+		// Relative path check
+		relExists, err := DirExists(c.relPath)
+		assert.NoError(t, err)
+		assert.Equal(t, c.want, relExists)
+
+		// Absolute path check
+		absPath, err := filepath.Abs(c.relPath)
+		assert.NoError(t, err)
+		absExists, err := DirExists(absPath)
+		assert.NoError(t, err)
+		assert.Equal(t, c.want, absExists)
+	}
+}

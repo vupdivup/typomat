@@ -160,7 +160,7 @@ func TokenizeFile(path string, wordFilter func(string) bool) ([]string, error) {
 	}
 	defer file.Close()
 
-	reader := bufio.NewReader(file)
+	reader := bufio.NewReaderSize(file, 128*1024)
 	for {
 		// Read and tokenize each line
 		line, err := reader.ReadString('\n')
