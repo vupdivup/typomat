@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vupdivup/typelines/pkg/fileutils"
+	"github.com/vupdivup/typelines/pkg/files"
 	"go.uber.org/zap"
 )
 
@@ -83,5 +83,5 @@ func DbDir() string {
 // PurgeCache deletes all cached data stored in the database directory.
 func PurgeCache() error {
 	zap.S().Info("Purging application cache")
-	return fileutils.RemoveChildren(dbDir)
+	return files.RemoveChildren(dbDir)
 }

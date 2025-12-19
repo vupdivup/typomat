@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/vupdivup/typelines/internal/data"
-	"github.com/vupdivup/typelines/pkg/fileutils"
+	"github.com/vupdivup/typelines/pkg/files"
 	"github.com/vupdivup/typelines/pkg/git"
 	"github.com/vupdivup/typelines/pkg/random"
 	"github.com/vupdivup/typelines/pkg/random/lazy"
@@ -85,7 +85,7 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 		"max_len", maxLen)
 
 	// Check if directory exists
-	dirExists, err := fileutils.DirExists(dirPath)
+	dirExists, err := files.DirExists(dirPath)
 	if err != nil {
 		zap.S().Errorw("Failed to check if directory exists",
 			"dir_path", dirPath,
@@ -420,7 +420,7 @@ func isFileEligible(fpath string) (bool, error) {
 		return false, ErrFileOperation
 	}
 
-	isTextFile, err := fileutils.IsTextFile(fpath)
+	isTextFile, err := files.IsTextFile(fpath)
 	if err != nil {
 		zap.S().Errorw("Failed to determine if file is text",
 			"file_path", fpath,

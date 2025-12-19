@@ -1,4 +1,4 @@
-package fileutils
+package files
 
 // binaryExtensions is a list of file extensions typically associated with
 // binary files.
