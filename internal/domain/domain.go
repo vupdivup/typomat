@@ -305,20 +305,15 @@ func processFile(
 	}
 
 	// Calculate size and mtime
-	size, err := fileutils.Size(path)
+	stat, err := os.Stat(path)
 	if err != nil {
-		zap.S().Errorw("Failed to get file size",
+		zap.S().Errorw("Failed to stat file",
 			"file_path", path,
 			"error", err)
 		return fileProcessingResult{err: ErrFileOperation}
 	}
-	mtime, err := fileutils.Mtime(path)
-	if err != nil {
-		zap.S().Errorw("Failed to get file mtime",
-			"file_path", path,
-			"error", err)
-		return fileProcessingResult{err: ErrFileOperation}
-	}
+	size := int(stat.Size())
+	mtime := stat.ModTime()
 
 	file := data.File{Path: path, Size: size, Mtime: mtime}
 

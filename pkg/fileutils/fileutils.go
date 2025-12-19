@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"time"
 	"unicode/utf8"
 )
 
@@ -56,24 +55,6 @@ func DirExists(path string) (bool, error) {
 	}
 
 	return info.IsDir(), nil
-}
-
-// Size returns the size of the file at the given path in bytes.
-func Size(path string) (int, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return 0, err
-	}
-	return int(info.Size()), nil
-}
-
-// Mtime returns the modification time of the file at the given path.
-func Mtime(path string) (time.Time, error) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return info.ModTime(), nil
 }
 
 // GetFingerprint computes the SHA-256 fingerprint of the file at the given
