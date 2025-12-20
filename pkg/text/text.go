@@ -1,5 +1,5 @@
-// Package stringutils provides utility functions for string manipulation.
-package textutils
+// Package text provides utility functions for string manipulation.
+package text
 
 // Wrap splits the input string into lines not exceeding the specified line
 // width, using a custom word separator rune.

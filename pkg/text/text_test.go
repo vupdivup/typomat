@@ -1,4 +1,4 @@
-package textutils
+package text
 
 import (
 	"testing"

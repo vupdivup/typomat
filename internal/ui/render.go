@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vupdivup/typelines/internal/config"
-	"github.com/vupdivup/typelines/pkg/textutils"
+	"github.com/vupdivup/typelines/pkg/text"
 )
 
 // renderTitleBar renders the title bar of the application.
@@ -71,7 +71,7 @@ func renderStatusBar(m model) string {
 func renderPrompt(m model) string {
 	render := ""
 
-	promptLines := textutils.Wrap(m.prompt, canvasContentWidth, ' ')
+	promptLines := text.Wrap(m.prompt, canvasContentWidth, ' ')
 	inputRunes := []rune(m.input)
 	pos := 0
 
