@@ -2,8 +2,6 @@
 package files
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -56,23 +54,6 @@ func DirExists(path string) (bool, error) {
 	}
 
 	return info.IsDir(), nil
-}
-
-// GetFingerprint computes the SHA-256 fingerprint of the file at the given
-// path.
-func GetFingerprint(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
 // RemoveChildren removes all files and subdirectories within the specified
