@@ -27,4 +27,8 @@ func TestLsFiles(t *testing.T) {
 	files, err := LsFiles("testdata")
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, absPaths, files)
+
+	// Test with non-existent directory
+	_, err = LsFiles("testdata/nonexistent")
+	assert.Error(t, err)
 }
