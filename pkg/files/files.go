@@ -15,7 +15,6 @@ import (
 // Files with common binary file extensions are ruled out without reading.
 func IsTextFile(path string) (bool, error) {
 	// Exit fast for known binary file extensions
-	// TODO: test this
 	ext := filepath.Ext(path)
 	if slices.Contains(binaryExtensions, ext) {
 		return false, nil

@@ -1,6 +1,7 @@
 package files
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -61,4 +62,37 @@ func TestDirExists(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, c.want, absExists)
 	}
+}
+
+func TestRemoveChildren(t *testing.T) {
+	dirs := []string{
+		"testdata/remove_children/dir",
+		"testdata/remove_children/nested",
+		"testdata/remove_children/nested/subdir",
+		"testdata/remove_children/empty",
+	}
+	files := []string{
+		"testdata/remove_children/dir/file1.txt",
+		"testdata/remove_children/dir/file2.log",
+		"testdata/remove_children/nested/file3.md",
+		"testdata/remove_children/nested/subdir/file4.csv",
+	}
+
+	// Setup: create directories and files
+	for _, dir := range dirs {
+		err := os.MkdirAll(dir, 0o755)
+		assert.NoError(t, err)
+	}
+	for _, file := range files {
+		f, err := os.Create(file)
+		assert.NoError(t, err)
+		f.Close()
+	}
+
+	// Test removal
+	err := RemoveChildren("testdata/remove_children")
+	assert.NoError(t, err)
+	entries, err := os.ReadDir("testdata/remove_children")
+	assert.NoError(t, err)
+	assert.Empty(t, entries)
 }
