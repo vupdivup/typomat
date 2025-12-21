@@ -55,6 +55,12 @@ func main() {
 		printErr(err)
 	}
 
+	// Clean old files
+	// NOTE: cleanup errors don't block application startup
+	if err := config.RemoveOldFiles(); err != nil {
+		zap.S().Error("Failed to clean old files", "error", err)
+	}
+
 	// Run main command
 	if err := rootCmd.Execute(); err != nil {
 		printErr(err)
@@ -63,6 +69,8 @@ func main() {
 
 // printErr prints an error message to the console along with
 // the usage instructions.
+// Note that this function does not exit the application to allow for exit code
+// 0 even on errors.
 func printErr(err error) {
 	fmt.Printf("Error: %s\n\n", err.Error())
 	println(rootCmd.UsageString())

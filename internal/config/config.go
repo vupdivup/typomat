@@ -14,7 +14,11 @@ import (
 
 const (
 	// AppName is the name of the application.
-	AppName = "typeline"
+	AppName = "Keycap"
+
+	// retentionPeriod defines how long db and log files are kept before
+	// being cleaned up.
+	retentionPeriod = 7 * 24 * time.Hour
 )
 
 var (
@@ -27,26 +31,25 @@ var (
 func Init() error {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return err
+		return ErrInit
 	}
 
 	// Create application directory
 	appDir = filepath.Join(configDir, AppName)
 	if err := os.MkdirAll(appDir, 0o755); err != nil {
-		return err
+		return ErrInit
 	}
 
 	// Create database directory
 	dbDir = filepath.Join(appDir, "db")
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		return err
+		return ErrInit
 	}
 
 	// Create logs directory
-	// TODO: purge old logs
 	logDir := filepath.Join(appDir, "logs")
 	if err := os.MkdirAll(logDir, 0o755); err != nil {
-		return err
+		return ErrInit
 	}
 
 	// Determine log file path
@@ -84,4 +87,53 @@ func DbDir() string {
 func PurgeCache() error {
 	zap.S().Info("Purging application cache")
 	return files.RemoveChildren(dbDir)
+}
+
+// RemoveOldFiles removes files in the application directory that are older
+// than a week.
+func RemoveOldFiles() error {
+	err := filepath.WalkDir(
+		appDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				zap.S().Errorw("Failed to access path",
+					"path", path,
+					"error", err)
+				return nil // Continue walking despite errors
+			}
+
+			// Skip directories
+			if d.IsDir() {
+				return nil
+			}
+
+			stat, err := d.Info()
+			if err != nil {
+				zap.S().Errorw("Failed to get file info",
+					"path", path,
+					"error", err)
+				return nil
+			}
+
+			// Remove file if older than retention period
+			if time.Since(stat.ModTime()) > retentionPeriod {
+				err := os.Remove(path)
+				if err == nil {
+					zap.S().Infow("Removed old file",
+						"path", path)
+				} else {
+					zap.S().Errorw("Failed to remove file",
+						"path", path,
+						"error", err)
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		zap.S().Errorw("Failed to walk application directory",
+			"app_dir", appDir,
+			"error", err)
+		return ErrCleanup
+	}
+
+	return nil
 }
