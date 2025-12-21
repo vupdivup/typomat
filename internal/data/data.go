@@ -293,20 +293,26 @@ func openDb(id string) (*gorm.DB, error) {
 		"db_path", dbPath)
 
 	// Perform migrations
-	// TODO: delete if error
-	if err := db.AutoMigrate(&Token{}); err != nil {
-		zap.S().Errorw("Failed to migrate database schema",
-			"entity", "token",
+	// Retry once if migration fails
+	for i := range 2 {
+		if err := db.AutoMigrate(&File{}, &Token{}); err == nil {
+			break
+		}
+
+		zap.S().Errorw("Failed to migrate or create database schema",
 			"db_id", id,
 			"error", err)
-		return nil, ErrDbOperation
-	}
-	if err := db.AutoMigrate(&File{}); err != nil {
-		zap.S().Errorw("Failed to migrate database schema",
-			"entity", "file",
-			"db_id", id,
-			"error", err)
-		return nil, ErrDbOperation
+
+		if i == 1 {
+			return nil, ErrDbOperation
+		}
+
+		// Try to purge cache and reopen
+		if err := config.PurgeCache(); err != nil {
+			zap.S().Errorw("Failed to purge cache after migration error",
+				"db_id", id,
+				"error", err)
+		}
 	}
 
 	// Cache the opened database
