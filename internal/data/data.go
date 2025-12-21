@@ -84,7 +84,7 @@ func UpsertTokens(dbId string, tokens []Token) error {
 		zap.S().Errorw("Failed to upsert tokens into database",
 			"db_id", dbId,
 			"error", result.Error)
-		return ErrDbOperation
+		return ErrQuery
 	}
 
 	zap.S().Debugw("Successfully upserted tokens into database",
@@ -110,7 +110,7 @@ func UpsertFiles(dbId string, files []File) error {
 		zap.S().Errorw("Failed to upsert files into database",
 			"db_id", dbId,
 			"error", result.Error)
-		return ErrDbOperation
+		return ErrQuery
 	}
 
 	zap.S().Debugw("Successfully upserted files into database",
@@ -138,7 +138,7 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 			"file_path", file.Path,
 			"db_id", dbId,
 			"error", err)
-		return ErrDbOperation
+		return ErrQuery
 	}
 
 	if !cascade {
@@ -160,7 +160,7 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 			"file_path", file.Path,
 			"db_id", dbId,
 			"error", err)
-		return ErrDbOperation
+		return ErrQuery
 	}
 
 	zap.S().Debugw(
@@ -192,7 +192,7 @@ func DeleteTokensOfFile(dbId string, path string) error {
 			"file_path", path,
 			"db_id", dbId,
 			"error", err)
-		return ErrDbOperation
+		return ErrQuery
 	}
 
 	return nil
@@ -217,7 +217,7 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 			zap.S().Errorw("Failed to query distinct tokens",
 				"db_id", dbId,
 				"error", err)
-			yield(TokenResult{Err: ErrDbOperation})
+			yield(TokenResult{Err: ErrQuery})
 			return
 		}
 		defer rows.Close()
@@ -229,7 +229,7 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 				zap.S().Errorw("Failed to scan token row",
 					"db_id", dbId,
 					"error", err)
-				yield(TokenResult{Err: ErrDbOperation})
+				yield(TokenResult{Err: ErrQuery})
 				return
 			}
 			if !yield(TokenResult{Token: token}) {
@@ -251,7 +251,7 @@ func GetFiles(dbId string) ([]File, error) {
 		zap.S().Errorw("Failed to retrieve files from database",
 			"db_id", dbId,
 			"error", err)
-		return []File{}, ErrDbOperation
+		return []File{}, ErrQuery
 	}
 
 	zap.S().Debugw("Retrieved files from database",
@@ -286,7 +286,7 @@ func openDb(id string) (*gorm.DB, error) {
 			"db_id", id,
 			"db_path", dbPath,
 			"error", err)
-		return nil, ErrDbConnection
+		return nil, ErrConn
 	}
 	zap.S().Debugw("Opened database",
 		"db_id", id,
@@ -304,7 +304,7 @@ func openDb(id string) (*gorm.DB, error) {
 			"error", err)
 
 		if i == 1 {
-			return nil, ErrDbOperation
+			return nil, ErrQuery
 		}
 
 		// Try to purge cache and reopen
