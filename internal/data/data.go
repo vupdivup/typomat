@@ -70,9 +70,6 @@ func (f *File) VersionEquals(other File) bool {
 
 // UpsertTokens inserts or updates the given tokens in a database.
 func UpsertTokens(dbId string, tokens []Token) error {
-	zap.S().Debugw("Upserting tokens into database",
-		"token_count", len(tokens),
-		"db_id", dbId)
 	db, err := openDb(dbId)
 	if err != nil {
 		return err
@@ -87,7 +84,8 @@ func UpsertTokens(dbId string, tokens []Token) error {
 		return ErrQuery
 	}
 
-	zap.S().Debugw("Successfully upserted tokens into database",
+	zap.S().Debugw("Upserted tokens into database",
+		"token_count", len(tokens),
 		"rows_affected", result.RowsAffected,
 		"db_id", dbId)
 	return nil
@@ -95,10 +93,6 @@ func UpsertTokens(dbId string, tokens []Token) error {
 
 // UpsertFiles uploads or updates file records in a database.
 func UpsertFiles(dbId string, files []File) error {
-	zap.S().Debugw("Upserting files into database",
-		"file_count", len(files),
-		"db_id", dbId)
-
 	db, err := openDb(dbId)
 	if err != nil {
 		return err
@@ -113,7 +107,8 @@ func UpsertFiles(dbId string, files []File) error {
 		return ErrQuery
 	}
 
-	zap.S().Debugw("Successfully upserted files into database",
+	zap.S().Debugw("Upserted files into database",
+		"file_count", len(files),
 		"rows_affected", result.RowsAffected,
 		"db_id", dbId)
 	return nil
@@ -122,10 +117,6 @@ func UpsertFiles(dbId string, files []File) error {
 // DeleteFile removes a file record from the database, optionally cascading
 // the deletion to associated tokens.
 func DeleteFile(dbId string, file File, cascade bool) error {
-	zap.S().Debugw("Deleting file from database",
-		"file_path", file.Path,
-		"db_id", dbId)
-
 	// Open the database
 	db, err := openDb(dbId)
 	if err != nil {
@@ -142,7 +133,7 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 	}
 
 	if !cascade {
-		zap.S().Debugw("Successfully deleted file from database",
+		zap.S().Debugw("Deleted file from database",
 			"file_path", file.Path,
 			"db_id", dbId)
 		zap.S().Debugw("Skipping cascade delete of associated tokens",
@@ -164,7 +155,7 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 	}
 
 	zap.S().Debugw(
-		"Successfully deleted file and associated tokens from database",
+		"Deleted file and associated tokens from database",
 		"file_path", file.Path,
 		"db_id", dbId)
 	return nil
@@ -173,10 +164,6 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 // DeleteTokensOfFile removes all tokens associated with a specific file
 // from the database.
 func DeleteTokensOfFile(dbId string, path string) error {
-	zap.S().Debugw("Deleting tokens of file from database",
-		"file_path", path,
-		"db_id", dbId)
-
 	// Open the database
 	db, err := openDb(dbId)
 	if err != nil {
@@ -194,6 +181,10 @@ func DeleteTokensOfFile(dbId string, path string) error {
 			"error", err)
 		return ErrQuery
 	}
+
+	zap.S().Debugw("Deleted tokens of file from database",
+		"file_path", path,
+		"db_id", dbId)
 
 	return nil
 }
@@ -263,9 +254,8 @@ func GetFiles(dbId string) ([]File, error) {
 // openDb opens (or creates) a database with the given identifier.
 // Cached database connections are reused.
 func openDb(id string) (*gorm.DB, error) {
+	// Check if the database is already opened and cached
 	if db, ok := dbCache[id]; ok {
-		zap.S().Debugw("Reusing cached database connection",
-			"db_id", id)
 		return db, nil
 	}
 
