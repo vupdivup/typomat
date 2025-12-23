@@ -261,12 +261,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.spinner.Tick, cmd)
 
 	case tea.KeyMsg:
+		if key.Matches(msg, globalKeys.Quit) {
+			return m, tea.Quit
+		}
+
 		switch m.appState {
 		case StateBreak:
-			switch {
-			case key.Matches(msg, breakKeys.Quit):
-				return m, tea.Quit
-			case key.Matches(msg, breakKeys.Restart):
+			if key.Matches(msg, breakKeys.Restart) {
 				// Check if more prompts are available
 				if len(m.promptPool) == 0 {
 					var cmd tea.Cmd
@@ -281,10 +282,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case StateSession, StateReady:
-			if key.Matches(msg, sessionKeys.Quit) {
-				return m, tea.Quit
-			}
-
 			switch msg.String() {
 			case "backspace":
 				return m.handleBackspace(), nil
