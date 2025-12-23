@@ -10,12 +10,23 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:  fmt.Sprintf("%s [DIRECTORY]", config.AppName),
+	Use:  fmt.Sprintf("%s [DIRECTORY]", config.AppName), // TODO: desc
 	Args: cobra.MaximumNArgs(1),
 	RunE: run,
 }
 
 func run(cmd *cobra.Command, args []string) error {
+	// Handle version flag
+	version, err := cmd.Flags().GetBool("version")
+	if err != nil {
+		return err
+	}
+	if version {
+		fmt.Printf("%s version %s\n", config.ProductName, config.AppVersion)
+		return nil
+	}
+
+	// Handle purge flag
 	purge, err := cmd.Flags().GetBool("purge")
 	if err != nil {
 		return err
@@ -37,6 +48,8 @@ func run(cmd *cobra.Command, args []string) error {
 func init() {
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = true
+	rootCmd.Flags().BoolP(
+		"version", "V", false, "display application version")
 	rootCmd.Flags().BoolP(
 		"purge", "p", false, "purge application cache")
 }

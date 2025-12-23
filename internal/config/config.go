@@ -13,8 +13,12 @@ import (
 )
 
 const (
-	// AppName is the name of the application.
-	AppName = "Keycap"
+	// ProductName is the human-readable name of the application.
+	ProductName = "Keycap"
+	// AppCommandName is the command-line name of the application.
+	AppName = "keycap"
+	// AppVersion is the current version of the application.
+	AppVersion = "0.1.0"
 
 	// retentionPeriod defines how long db and log files are kept before
 	// being cleaned up.
@@ -85,7 +89,8 @@ func DbDir() string {
 
 // PurgeCache deletes all cached data stored in the database directory.
 func PurgeCache() error {
-	zap.S().Info("Purging application cache")
+	zap.S().Infow("Purging application cache",
+		"db_dir", dbDir)
 	return files.RemoveChildren(dbDir)
 }
 
