@@ -6,8 +6,11 @@ before:
   hooks:
     - go mod tidy
 
+release:
+  prerelease: auto
+
 builds:
-  - main: ./cmd
+  - main: ./cmd/typomat
     env:
       - CGO_ENABLED=0
     goos:
@@ -27,20 +30,15 @@ archives:
       - goos: windows
         formats: [zip]
 
-homebrew_casks:
+brews:
   - name: typomat
     repository:
       owner: vupdivup
-      name: homebrew_tap
+      name: homebrew-tap
     homepage: https://github.com/vupdivup/typomat
     description: Turn your code into muscle memory
     license: MIT
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/typomat"]
-          end
+    skip_upload: auto
 
 scoops:
   - name: typomat
@@ -50,3 +48,4 @@ scoops:
     homepage: https://github.com/vupdivup/typomat
     description: Turn your code into muscle memory
     license: MIT
+    skip_upload: auto
