@@ -17,8 +17,6 @@ const (
 	ProductName = "typomat"
 	// AppCommandName is the command-line name of the application.
 	AppName = "typomat"
-	// AppVersion is the current version of the application.
-	AppVersion = "0.1.0"
 
 	// retentionPeriod defines how long db and log files are kept before
 	// being cleaned up.
