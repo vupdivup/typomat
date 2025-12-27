@@ -2,11 +2,7 @@
 
 typomat is a command-line typing practice tool that creates exercises from the contents of your repository — perfect for a quick warmup before work.
 
-<figure>
-    <img src="docs/demo.gif"
-         alt="Typing session demo">
-    <figcaption><center><em>Practicing with words from the typomat project's source code</em></center></figcaption>
-</figure>
+![typomat demo](docs/demo.gif)
 
 ## Features
 
