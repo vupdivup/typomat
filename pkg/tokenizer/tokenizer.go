@@ -44,10 +44,10 @@ func getRuneCase(r rune) Case {
 
 // splitMixedCaseToken splits a mixed-case identifier into its subtokens.
 // For example, "CamelCaseWord" becomes "Camel", "Case", "Word".
-// Acronyms are not handled specially; "JSONData" becomes "J", "S", "O", "N",
+// Acronyms are treated as single tokens, e.g., "JSONData" becomes "JSON",
 // "Data".
+// No lowercase conversion is performed here.
 func splitMixedCaseToken(word []rune) [][]rune {
-	// TODO: Handle acronyms specially
 	var result [][]rune
 	var currentToken []rune
 
@@ -59,7 +59,7 @@ func splitMixedCaseToken(word []rune) [][]rune {
 	}
 
 	for i, r := range word {
-		if i != 0 && getRuneCase(r) == CaseUpper {
+		if getRuneCase(r) == CaseUpper && (i < len(word)-1 && getRuneCase(word[i+1]) == CaseLower) {
 			flush()
 		}
 
