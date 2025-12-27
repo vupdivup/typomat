@@ -10,12 +10,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/vupdivup/typelines/internal/data"
-	"github.com/vupdivup/typelines/pkg/files"
-	"github.com/vupdivup/typelines/pkg/git"
-	"github.com/vupdivup/typelines/pkg/random"
-	"github.com/vupdivup/typelines/pkg/random/lazy"
-	"github.com/vupdivup/typelines/pkg/tokenizer"
+	"github.com/vupdivup/typomat/internal/data"
+	"github.com/vupdivup/typomat/pkg/files"
+	"github.com/vupdivup/typomat/pkg/git"
+	"github.com/vupdivup/typomat/pkg/random"
+	"github.com/vupdivup/typomat/pkg/random/lazy"
+	"github.com/vupdivup/typomat/pkg/tokenizer"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )

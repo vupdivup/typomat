@@ -4,15 +4,16 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/vupdivup/typelines/internal/config"
-	"github.com/vupdivup/typelines/internal/ui"
+	"github.com/vupdivup/typomat/internal/config"
+	"github.com/vupdivup/typomat/internal/ui"
 	"go.uber.org/zap"
 )
 
 var rootCmd = &cobra.Command{
-	Use:  fmt.Sprintf("%s [DIRECTORY]", config.AppName), // TODO: desc
-	Args: cobra.MaximumNArgs(1),
-	RunE: run,
+	Use:   fmt.Sprintf("%s [DIRECTORY]", config.AppName), // TODO: desc
+	Short: "Turn your code into muscle memory",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  run,
 }
 
 func run(cmd *cobra.Command, args []string) error {

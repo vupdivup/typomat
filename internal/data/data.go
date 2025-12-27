@@ -10,7 +10,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vupdivup/typelines/internal/config"
+	"github.com/vupdivup/typomat/internal/config"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

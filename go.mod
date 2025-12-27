@@ -1,4 +1,4 @@
-module github.com/vupdivup/typelines
+module github.com/vupdivup/typomat
 
 go 1.25.4
 

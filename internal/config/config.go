@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vupdivup/typelines/pkg/files"
+	"github.com/vupdivup/typomat/pkg/files"
 	"go.uber.org/zap"
 )
 
 const (
 	// ProductName is the human-readable name of the application.
-	ProductName = "Keycap"
+	ProductName = "typomat"
 	// AppCommandName is the command-line name of the application.
-	AppName = "keycap"
+	AppName = "typomat"
 	// AppVersion is the current version of the application.
 	AppVersion = "0.1.0"
 

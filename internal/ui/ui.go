@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/vupdivup/typelines/internal/domain"
-	"github.com/vupdivup/typelines/pkg/alphabet"
-	"github.com/vupdivup/typelines/pkg/metrics"
+	"github.com/vupdivup/typomat/internal/domain"
+	"github.com/vupdivup/typomat/pkg/alphabet"
+	"github.com/vupdivup/typomat/pkg/metrics"
 )
 
 const (

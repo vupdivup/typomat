@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/vupdivup/typelines/internal/config"
-	"github.com/vupdivup/typelines/internal/domain"
+	"github.com/vupdivup/typomat/internal/config"
+	"github.com/vupdivup/typomat/internal/domain"
 )
 
 func main() {
