@@ -59,7 +59,12 @@ func splitMixedCaseToken(word []rune) [][]rune {
 	}
 
 	for i, r := range word {
-		if getRuneCase(r) == CaseUpper && (i < len(word)-1 && getRuneCase(word[i+1]) == CaseLower) {
+		// flush if:
+		// 1) transition from lower (previous) to upper case (current)
+		// 2) transition from upper (current) to lower case (next)
+		isPreviousLower := i > 0 && getRuneCase(word[i-1]) == CaseLower
+		isNextLower := i < len(word)-1 && getRuneCase(word[i+1]) == CaseLower
+		if getRuneCase(r) == CaseUpper && (isPreviousLower || isNextLower) {
 			flush()
 		}
 

@@ -22,6 +22,7 @@ func TestTokenizeString(t *testing.T) {
 		{"var1 = 42;", []string{"var"}},
 		// acronyms
 		{"JSONData", []string{"json", "data"}},
+		{"NumCPU", []string{"num", "cpu"}},
 		// empty string
 		{"", []string{}},
 		// string with only delimiters
