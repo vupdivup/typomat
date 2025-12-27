@@ -9,4 +9,7 @@ var (
 	ErrFileOperation = errors.New("file operation failed")
 	// ErrTokenization indicates a failure during tokenization.
 	ErrTextProcessing = errors.New("text processing failed")
+	// ErrEmptyDir indicates that no eligible files were found in the specified
+	// directory.
+	ErrEmptyDir = errors.New("no eligible files found in directory")
 )

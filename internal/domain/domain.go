@@ -176,10 +176,15 @@ func ProcessDirectory(dirPath string) error {
 			"error", err)
 		return ErrFileOperation
 	}
+	if len(paths) == 0 {
+		zap.S().Errorw("No files found in directory",
+			"dir_path", dirPath)
+		return ErrEmptyDir
+	}
 
 	// Prepare for concurrent processing
 	numWorkers := runtime.NumCPU()
-	pathBatches := slices.Chunk(paths, len(paths)/numWorkers)
+	pathBatches := slices.Chunk(paths, len(paths)/numWorkers) // FIXME: panic
 	zap.S().Infow("Starting file processing",
 		"dir_path", dirPath,
 		"file_count", len(paths),
