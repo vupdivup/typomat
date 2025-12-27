@@ -1,0 +1,52 @@
+version: 2
+
+project_name: typomat
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+homebrew_casks:
+  - name: typomat
+    repository:
+      owner: vupdivup
+      name: homebrew_tap
+    homepage: https://github.com/vupdivup/typomat
+    description: Turn your code into muscle memory
+    license: MIT
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/typomat"]
+          end
+
+scoops:
+  - name: typomat
+    repository:
+      owner: vupdivup
+      name: scoop-bucket
+    homepage: https://github.com/vupdivup/typomat
+    description: Turn your code into muscle memory
+    license: MIT
