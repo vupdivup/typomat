@@ -1,6 +1,6 @@
 # Profiling
 
-This is a command-line app that executes typeline's directory processing
+This is a command-line app that executes the app's directory processing
 operation for CPU profiling.
 It takes a directory path and an output filename as positional arguments and
 generates a CPU profile.

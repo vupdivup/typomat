@@ -1,6 +1,6 @@
 # Benchmark
 
-This is a command-line app that executes typeline's directory processing
+This is a command-line app that executes the apps's directory processing
 operation for benchmarking.
 It takes a directory path as a positional argument and exists when said
 directory has been ingested.
