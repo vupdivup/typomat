@@ -412,6 +412,12 @@ func generatePrompt(maxLen int) (string, error) {
 		tokens = append(tokens, tr.Token.Value)
 	}
 
+	// Check if any tokens were found
+	if len(tokens) == 0 {
+		zap.S().Errorw("No tokens found in database to generate prompt")
+		return "", ErrNoTokensFound
+	}
+
 	// Shuffle tokens to ensure randomness
 	shuffled := random.Shuffle(tokens)
 
