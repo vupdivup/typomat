@@ -12,11 +12,11 @@ import (
 
 // renderTitleBar renders the title bar of the application.
 func renderTitleBar() string {
-	left := mutedStyle.Render("╭" + "─")
+	left := mutedStyle.Render("╭" + "──")
 
 	// The title 'sits' on the upper border line
-	title := mutedStyle.Render(" .") + accentStyle.Render(config.AppName) +
-		mutedStyle.Render("() ")
+	title := mutedStyle.Render(" ") + accentStyle.Render(config.ProductName) +
+		mutedStyle.Render(" ")
 
 	restWidth := windowOuterWidth - lipgloss.Width(left) - lipgloss.Width(title)
 	right := mutedStyle.Render(strings.Repeat("─", restWidth-1) + "╮")
@@ -52,10 +52,10 @@ func renderStats(m model) string {
 	accStr := fmt.Sprintf("%d%%", int(m.accuracy))
 
 	return accentStyle.Render(wpmStr) +
-		labelStyle.Render(" WPM") +
+		labelStyle.Render(" wpm") +
 		bodyStyle.Render(" • ") +
 		accentStyle.Render(accStr) +
-		labelStyle.Render(" ACC")
+		labelStyle.Render(" acc")
 }
 
 // renderStatusBar renders the status bar with help and stats.
