@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/vupdivup/typomat/internal/data"
 	"github.com/vupdivup/typomat/pkg/files"
@@ -17,7 +18,6 @@ import (
 	"github.com/vupdivup/typomat/pkg/random/lazy"
 	"github.com/vupdivup/typomat/pkg/tokenizer"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -191,8 +191,8 @@ func ProcessDirectory(dirPath string) error {
 	maxWorkers := runtime.NumCPU()
 	// Use less workers if there are fewer files than CPUs
 	// Also ensure at least one batch
-	numBatches := max(min(len(paths)/maxWorkers, len(paths)), 1)
-	batches := slices.Chunk(paths, numBatches)
+	batchSize := max(len(paths)/maxWorkers, 1)
+	batches := slices.Chunk(paths, batchSize)
 	zap.S().Infow("Starting file processing",
 		"dir_path", dirPath,
 		"file_count", len(paths),
@@ -201,20 +201,18 @@ func ProcessDirectory(dirPath string) error {
 	// Process files concurrently
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	group, ctx := errgroup.WithContext(ctx)
+	var wg sync.WaitGroup
 	results := make(chan fileProcessingResult)
 	for batch := range batches {
-		group.Go(func() error {
-			return processFileBatch(batch, dbFiles, results, ctx)
+		wg.Go(func() {
+			processFileBatch(batch, dbFiles, results, ctx)
 		})
 	}
 
 	// Close results channel when all processing is done
-	groupErr := make(chan error, 1)
 	go func() {
-		err := group.Wait()
+		wg.Wait()
 		close(results)
-		groupErr <- err
 	}()
 
 	// Receive file processed signals and flush tokens as needed
@@ -269,11 +267,6 @@ func ProcessDirectory(dirPath string) error {
 		}
 	}
 
-	// Check for errors from goroutines
-	if err := <-groupErr; err != nil {
-		return err
-	}
-
 	// Flush remaining tokens
 	if err := flushTokens(); err != nil {
 		return err
@@ -296,7 +289,7 @@ func ProcessDirectory(dirPath string) error {
 func processFileBatch(
 	paths []string, dbFiles map[string]data.File,
 	results chan fileProcessingResult, ctx context.Context,
-) error {
+) {
 	for _, path := range paths {
 		// Process file
 		result := processFile(path, dbFiles)
@@ -305,11 +298,9 @@ func processFileBatch(
 		select {
 		case results <- result:
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		}
 	}
-
-	return nil
 }
 
 // processFile processes a single file and returns the processing results.
