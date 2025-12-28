@@ -10,12 +10,11 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/glebarez/sqlite"
 	"github.com/vupdivup/typomat/internal/config"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
-	_ "modernc.org/sqlite"
 )
 
 const (
