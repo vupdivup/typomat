@@ -25,7 +25,7 @@ Install via [Scoop](https://scoop.sh/):
 
 ```bash
 scoop bucket add vupdivup https://github.com/vupdivup/scoop-bucket
-scoop install vupdivup/typomat
+scoop install typomat
 ```
 
 ### Linux/MacOS
@@ -46,3 +46,17 @@ go install github.com/vupdivup/typomat/cmd/typomat@latest
 ```
 
 Note that this method may require manually adding the [GOBIN](https://go.dev/wiki/GOPATH#gopath-variable) directory to PATH.
+
+## Usage
+
+Run typomat without any arguments to practice on the current directory.
+
+```bash
+typomat
+```
+
+Specify a custom directory as the text source by passing a path argument.
+
+```bash
+typomat path/to/dir
+```
