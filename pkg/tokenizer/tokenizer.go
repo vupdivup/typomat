@@ -165,17 +165,25 @@ func TokenizeFile(path string, wordFilter func(string) bool) ([]string, error) {
 	}
 	defer file.Close()
 
+	flush := func(line string) {
+		if len(line) > 0 {
+			lineTokens := TokenizeString(line, wordFilter)
+			tokens = append(tokens, lineTokens...)
+		}
+	}
+
 	reader := bufio.NewReaderSize(file, 128*1024)
 	for {
 		// Read and tokenize each line
 		line, err := reader.ReadString('\n')
 		if err == io.EOF {
+			// In case there's no newline at EOF, process the last line
+			flush(line)
 			break
 		} else if err != nil {
 			return tokens, err
 		}
-		lineTokens := TokenizeString(line, wordFilter)
-		tokens = append(tokens, lineTokens...)
+		flush(line)
 	}
 
 	return tokens, nil
