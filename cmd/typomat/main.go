@@ -47,14 +47,14 @@ func main() {
 	// Defer zap logger sync
 	defer func() {
 		if err := zap.S().Sync(); err != nil {
-			printErr(err)
+			exitWithErr(err)
 		}
 	}()
 
 	// Configure application
 	if err := config.Init(); err != nil {
 		zap.S().Error("Failed to initialize configuration", "error", err)
-		printErr(err)
+		exitWithErr(err)
 	}
 
 	// Clean old files
@@ -65,15 +65,15 @@ func main() {
 
 	// Run main command
 	if err := rootCmd.Execute(); err != nil {
-		printErr(err)
+		exitWithErr(err)
 	}
 }
 
-// printErr prints an error message to the console along with
+// exitWithErr prints an error message to the console along with
 // the usage instructions.
-// Note that this function does not exit the application to allow for exit code
-// 0 even on errors.
-func printErr(err error) {
+// It then exits the application with a non-zero status code.
+func exitWithErr(err error) {
 	fmt.Printf("Error: %s\n\n", err.Error())
 	println(rootCmd.UsageString())
+	os.Exit(1)
 }
