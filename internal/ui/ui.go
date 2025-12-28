@@ -14,6 +14,7 @@ import (
 	"github.com/vupdivup/typomat/internal/domain"
 	"github.com/vupdivup/typomat/pkg/alphabet"
 	"github.com/vupdivup/typomat/pkg/metrics"
+	"go.uber.org/zap"
 )
 
 const (
@@ -160,6 +161,8 @@ func (m model) ready() model {
 	m.wpm = 0
 	m.accuracy = 0.0
 	m.appState = StateReady
+	zap.S().Infow("Session ready",
+		"prompt", m.prompt)
 	return m
 }
 
@@ -173,6 +176,11 @@ func (m model) start() model {
 // stop ends the typing session.
 func (m model) stop() model {
 	m.appState = StateBreak
+	zap.S().Infow("Session ended",
+		"prompt", m.prompt,
+		"input", m.input,
+		"wpm", m.wpm,
+		"accuracy", m.accuracy)
 	return m
 }
 
@@ -206,6 +214,9 @@ func (m model) fetchMorePromptsIfNeeded() (model, tea.Cmd) {
 func (m model) acceptPrompt(prompt string) model {
 	m.promptsBeingFetched--
 	m.promptPool = append(m.promptPool, prompt)
+	zap.S().Debugw("Pooled new prompt",
+		"prompt", prompt,
+		"pool_size", len(m.promptPool))
 	return m
 }
 
@@ -218,6 +229,9 @@ func (m model) consumePrompt() model {
 	prompt := m.promptPool[0]
 	m.promptPool = m.promptPool[1:]
 	m.prompt = prompt
+	zap.S().Debugw("Consumed prompt from pool",
+		"prompt", prompt,
+		"pool_size", len(m.promptPool))
 	return m
 }
 
@@ -226,7 +240,16 @@ func (m model) Init() tea.Cmd {
 	return initCmd()
 }
 
+func (m model) updateMetrics() model {
+	elapsed := time.Since(m.startTime)
+	m.wpm = int(math.Round(metrics.WPM(m.input, elapsed)))
+	m.accuracy = int(
+		math.Round(metrics.Accuracy(m.prompt, m.input)))
+	return m
+}
+
 // handleBackspace processes a backspace key press.
+// Updates metrics as well.
 func (m model) handleBackspace() model {
 	if m.cursor() == 0 {
 		return m
@@ -234,10 +257,16 @@ func (m model) handleBackspace() model {
 
 	inputRunes := []rune(m.input)
 	m.input = string(inputRunes[:len(inputRunes)-1])
+	m = m.updateMetrics()
+	zap.S().Debugw("Handled backspace",
+		"input", m.input,
+		"wpm", m.wpm,
+		"accuracy", m.accuracy)
 	return m
 }
 
 // handleCtrlBackspace processes a Ctrl+Backspace key press.
+// Updates metrics as well.
 func (m model) handleCtrlBackspace() model {
 	inputRunes := []rune(m.input)
 	promptRunes := []rune(m.prompt)
@@ -248,6 +277,12 @@ func (m model) handleCtrlBackspace() model {
 	}
 
 	m.input = string(inputRunes[:cursor])
+	m = m.updateMetrics()
+	zap.S().Debugw("Handled ctrl+backspace",
+		"input", m.input,
+		"wpm", m.wpm,
+		"accuracy", m.accuracy)
+
 	return m
 }
 
@@ -311,16 +346,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input += msg.String()
 
 				// Update metrics
-				elapsed := time.Since(m.startTime)
-				m.wpm = int(math.Round(metrics.WPM(m.input, elapsed)))
-				m.accuracy = int(
-					math.Round(metrics.Accuracy(m.prompt, m.input)))
+				m = m.updateMetrics()
 
 				// End session if prompt completed
 				if m.cursor() >= len(promptRunes) {
 					return m.stop(), nil
 				}
 			}
+			zap.S().Debugw("Handled key press",
+				"msg", msg.String(),
+				"input", m.input,
+				"wpm", m.wpm,
+				"accuracy", m.accuracy)
+			return m, nil
 		}
 
 	case promptFetchedMsg:
