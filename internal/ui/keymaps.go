@@ -64,6 +64,6 @@ func (k breakKeyMap) FullHelp() [][]key.Binding {
 var breakKeys = breakKeyMap{
 	Restart: key.NewBinding(
 		key.WithKeys(" "),
-		key.WithHelp("space", "retry"),
+		key.WithHelp("space", "next"),
 	),
 }
