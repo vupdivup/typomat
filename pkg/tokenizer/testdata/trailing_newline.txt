@@ -1,0 +1,9 @@
+Hello, world!
+PascalCaseWord
+camelCaseWord
+snake_case-word
+
+ ,;! 
+var1 = 42;
+JSONData
+NumCPU
