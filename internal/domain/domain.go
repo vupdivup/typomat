@@ -46,6 +46,10 @@ const (
 	// tokenBufferSize is the number of tokens to buffer before flushing to
 	// the database.
 	tokenBufferSize = 10000
+
+	// maxErrors is the maximum number of errors allowed during file
+	// processing before aborting.
+	maxErrors = 16
 )
 
 // FileStatus represents the status of a file with respect to the database.
@@ -80,7 +84,7 @@ type fileProcessingResult struct {
 // from tokens of the specified directory.
 // This is the main entry point of the domain package.
 func Prompt(dirPath string, maxLen int) (string, error) {
-	zap.S().Infow("Generating prompt from directory text content",
+	zap.S().Debugw("Generating prompt from directory text content",
 		"dir_path", dirPath,
 		"max_len", maxLen)
 
@@ -121,6 +125,7 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 
 // ProcessDirectory tokenizes all eligible files in the specified directory
 // and stores the tokens in the database.
+// It returns an error if a set number of errors occur during processing.
 func ProcessDirectory(dirPath string) error {
 	var tokens []data.Token
 	var changedFiles []data.File
@@ -194,7 +199,9 @@ func ProcessDirectory(dirPath string) error {
 		"workers", maxWorkers)
 
 	// Process files concurrently
-	group, ctx := errgroup.WithContext(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	group, ctx := errgroup.WithContext(ctx)
 	results := make(chan fileProcessingResult)
 	for batch := range batches {
 		group.Go(func() error {
@@ -211,9 +218,18 @@ func ProcessDirectory(dirPath string) error {
 	}()
 
 	// Receive file processed signals and flush tokens as needed
+	numErrs := 0
 	for result := range results {
+		// Check for processing error, abort if exceeding max allowed
 		if result.err != nil {
-			return result.err
+			numErrs++
+			if numErrs >= maxErrors {
+				cancel()
+				zap.S().Errorw("Too many errors during directory processing, aborting",
+					"dir_path", dirPath,
+					"max_errors", maxErrors)
+				return ErrTooManyErrors
+			}
 		}
 
 		// File still exists, remove from removed files lookup
@@ -283,11 +299,7 @@ func processFileBatch(
 ) error {
 	for _, path := range paths {
 		// Process file
-		// TODO: is this necessary? Can we just skip a file?
 		result := processFile(path, dbFiles)
-		if result.err != nil {
-			return result.err
-		}
 
 		// Check for context cancellation
 		select {
