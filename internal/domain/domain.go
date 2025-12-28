@@ -214,7 +214,11 @@ func ProcessDirectory(dirPath string) error {
 		}
 
 		// File still exists, remove from removed files lookup
-		delete(removedFiles, result.file.Path)
+		// Ineligible files are kept for deletion in case they were previously
+		// tokenized
+		if result.status != FileStatusIneligible {
+			delete(removedFiles, result.file.Path)
+		}
 
 		switch result.status {
 		case FileStatusIneligible:
