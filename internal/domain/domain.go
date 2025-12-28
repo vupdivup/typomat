@@ -183,17 +183,20 @@ func ProcessDirectory(dirPath string) error {
 	}
 
 	// Prepare for concurrent processing
-	numWorkers := runtime.NumCPU()
-	pathBatches := slices.Chunk(paths, len(paths)/numWorkers)
+	maxWorkers := runtime.NumCPU()
+	// Use less workers if there are fewer files than CPUs
+	// Also ensure at least one batch
+	numBatches := max(min(len(paths)/maxWorkers, len(paths)), 1)
+	batches := slices.Chunk(paths, numBatches)
 	zap.S().Infow("Starting file processing",
 		"dir_path", dirPath,
 		"file_count", len(paths),
-		"workers", numWorkers)
+		"workers", maxWorkers)
 
 	// Process files concurrently
 	group, ctx := errgroup.WithContext(context.Background())
 	results := make(chan fileProcessingResult)
-	for batch := range pathBatches {
+	for batch := range batches {
 		group.Go(func() error {
 			return processFileBatch(batch, dbFiles, results, ctx)
 		})
