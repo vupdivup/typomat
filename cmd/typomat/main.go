@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/vupdivup/typomat/internal/config"
@@ -10,10 +11,20 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   fmt.Sprintf("%s [DIRECTORY]", config.AppName), // TODO: desc
+	Use:   fmt.Sprintf("%s [DIRECTORY]", config.AppName),
 	Short: "Turn your code into muscle memory",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  run,
+	Long: `
+typomat is a command-line typing practice tool that creates exercises
+from the contents of your repository.
+
+It runs through a directory's source code, extracting words from variable
+declarations, string literals and function signatures. These words are then used
+to build short, randomized typing prompts relevant to your codebase.
+
+Run typomat without any arguments to practice on the current directory.
+To use a custom source, provide a local path (DIRECTORY) for the program.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: run,
 }
 
 func run(cmd *cobra.Command, args []string) error {
