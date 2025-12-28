@@ -10,7 +10,6 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.1
-	golang.org/x/sync v0.19.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
 	modernc.org/sqlite v1.41.0
@@ -45,6 +44,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
+	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
