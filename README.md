@@ -1,5 +1,10 @@
 # typomat: turn your code into muscle memory
 
+![Go Report Card](https://goreportcard.com/badge/github.com/vupdivup/typomat) ![Go tests status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/go-test.yml?label=tests
+) ![Homebrew installation test status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/homebrew-test.yml?label=homebrew
+) ![Scoop installation test status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/scoop-test.yml?label=scoop
+)
+
 typomat is a command-line typing practice tool that creates exercises from the contents of your repository — perfect for a quick warmup before work.
 
 ![typomat demo](docs/demo.gif)
@@ -37,15 +42,17 @@ brew tap vupdivup/tap
 brew install typomat
 ```
 
+### Pre-built binaries
+
+Pre-built binaries are archived under the [latest release](https://github.com/vupdivup/typomat/releases/latest).
+
 ### Go
 
-Alternatively, if Go is available on your system:
+Use the Go toolchain to build from source:
 
 ```bash
 go install github.com/vupdivup/typomat/cmd/typomat@latest
 ```
-
-Note that this method may require manually adding the [GOBIN](https://go.dev/wiki/GOPATH#gopath-variable) directory to PATH.
 
 ## Usage
 
