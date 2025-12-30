@@ -8,6 +8,7 @@ before:
 
 release:
   prerelease: auto
+  mode: replace
 
 builds:
   - main: ./cmd/typomat
