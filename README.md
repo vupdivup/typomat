@@ -1,10 +1,5 @@
 # typomat: turn your code into muscle memory
 
-![Go Report Card](https://goreportcard.com/badge/github.com/vupdivup/typomat) ![Go tests status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/go-test.yml?label=tests
-) ![Homebrew installation test status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/homebrew-test.yml?label=homebrew
-) ![Scoop installation test status](https://img.shields.io/github/actions/workflow/status/vupdivup/typomat/scoop-test.yml?label=scoop
-)
-
 typomat is a command-line typing practice tool that creates exercises from the contents of your repository — perfect for a quick warmup before work.
 
 ![typomat demo](docs/demo.gif)
