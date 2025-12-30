@@ -10,11 +10,7 @@ jobs:
     runs-on: windows-latest
     
     steps:
-      - name: Install Scoop
-        run: |
-          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-        shell: powershell
+      - uses: MinoruSekine/setup-scoop@v4.0.2
       
       - name: Add vupdivup bucket
         run: scoop bucket add vupdivup https://github.com/vupdivup/scoop-bucket
