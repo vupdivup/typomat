@@ -1,13 +1,22 @@
-name: Homebrew Installation Test
+name: Homebrew installation test
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 6'
 
 jobs:
   test-homebrew:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     
     steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+      
       - name: Tap vupdivup/tap
         run: brew tap vupdivup/tap
       

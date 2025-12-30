@@ -1,0 +1,26 @@
+name: Scoop installation test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 6'
+
+jobs:
+  test-scoop:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Install Scoop
+        run: |
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+        shell: powershell
+      
+      - name: Add vupdivup bucket
+        run: scoop bucket add vupdivup https://github.com/vupdivup/scoop-bucket
+      
+      - name: Install typomat
+        run: scoop install typomat
+      
+      - name: Run typomat help
+        run: typomat -h
