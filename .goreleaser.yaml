@@ -30,7 +30,7 @@ archives:
       - goos: windows
         formats: [zip]
 
-brews:
+homebrew_casks:
   - name: typomat
     repository:
       owner: vupdivup
@@ -39,6 +39,12 @@ brews:
     description: Turn your code into muscle memory
     license: MIT
     skip_upload: auto
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/typomat"]
+          end
 
 scoops:
   - name: typomat
