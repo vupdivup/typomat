@@ -1,4 +1,4 @@
-name: Run Go tests
+name: Go test
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
     - cron: '0 0 * * 6'  # Every Saturday at midnight UTC
 
 jobs:
-  test:
+  go-test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]

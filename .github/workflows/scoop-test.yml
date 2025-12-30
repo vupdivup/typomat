@@ -6,7 +6,7 @@ on:
     - cron: '0 0 * * 6'
 
 jobs:
-  test-scoop:
+  scoop-test:
     runs-on: windows-latest
     
     steps:
