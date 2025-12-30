@@ -25,7 +25,7 @@ func getGitignore(repoPath string) (string, error) {
 
 // LsFiles lists absolute file paths of all files in the specified repository
 // path, excluding those ignored by .gitignore. Only .gitignore files in the
-// root of the repository are considered.
+// root of the repository are considered. Symlinks are listed as files.
 //
 // Note that the target directory is scanned regardless of whether it contains a
 // .git subdirectory. This means LsFiles returns files for any directory, not

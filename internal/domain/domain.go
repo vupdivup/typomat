@@ -433,12 +433,17 @@ func generatePrompt(maxLen int) (string, error) {
 
 // isFileEligible returns true if the file should be included for tokenization.
 func isFileEligible(fpath string) (bool, error) {
-	stat, err := os.Stat(fpath)
+	stat, err := os.Lstat(fpath)
 	if err != nil {
 		zap.S().Errorw("Failed to stat file",
 			"file_path", fpath,
 			"error", err)
 		return false, ErrFileOperation
+	}
+
+	// Exclude non-regular files (e.g., directories, symlinks, devices)
+	if !stat.Mode().IsRegular() {
+		return false, nil
 	}
 
 	isTextFile, err := files.IsTextFile(fpath)
