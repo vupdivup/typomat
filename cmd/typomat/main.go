@@ -56,11 +56,7 @@ func init() {
 
 func main() {
 	// Defer zap logger sync
-	defer func() {
-		if err := zap.S().Sync(); err != nil {
-			exitWithErr(err)
-		}
-	}()
+	defer zap.S().Sync() //nolint:errcheck
 
 	// Configure application
 	if err := config.Init(); err != nil {
@@ -80,11 +76,13 @@ func main() {
 	}
 }
 
-// exitWithErr prints an error message to the console along with
-// the usage instructions.
+// exitWithErr prints an error message to stderr along with the usage
+// instructions.
 // It then exits the application with a non-zero status code.
 func exitWithErr(err error) {
-	fmt.Printf("Error: %s\n\n", err.Error())
-	println(rootCmd.UsageString())
+	zap.S().Error("Application error", "error", err)
+	fmt.Fprintf(os.Stderr, "Error: %s\n\n", err.Error())
+	fmt.Fprint(os.Stderr, rootCmd.UsageString()+"\n")
+	zap.S().Sync() //nolint:errcheck
 	os.Exit(1)
 }
