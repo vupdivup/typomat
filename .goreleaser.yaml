@@ -5,6 +5,7 @@ project_name: typomat
 before:
   hooks:
     - go mod tidy
+    - go-licenses save ./... --save_path=licenses --force
 
 release:
   prerelease: auto
@@ -30,6 +31,10 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    files:
+      - LICENSE*
+      - README*
+      - licenses/**/*
 
 homebrew_casks:
   - name: typomat
