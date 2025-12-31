@@ -274,7 +274,7 @@ func ProcessDirectory(dirPath string) error {
 
 	// Delete tokens and entries of files that don't exist anymore
 	for _, file := range removedFiles {
-		zap.S().Infow("Deleting removed file from database",
+		zap.S().Debugw("Deleting removed file from database",
 			"file_path", file.Path)
 		if err := data.DeleteFile(dbId, file, true); err != nil {
 			return err
