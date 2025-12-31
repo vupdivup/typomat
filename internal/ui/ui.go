@@ -116,7 +116,7 @@ type model struct {
 	spinner spinner.Model
 
 	// Err captures any error that occurs during TUI execution.
-	Err error
+	err error
 
 	// frameTime is the time of the last frame update.
 	frameTime time.Time
@@ -368,7 +368,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case promptFetchedMsg:
 		if msg.err != nil {
-			m.Err = msg.err
+			m.err = msg.err
 			return m, tea.Quit
 		}
 
@@ -396,7 +396,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the TUI interface.
 func (m model) View() string {
 	// If there was an error, exit without rendering the app.
-	if m.Err != nil {
+	if m.err != nil {
 		return "\n"
 	}
 
@@ -413,5 +413,5 @@ func Launch(dirPath string) error {
 	}
 
 	uiModel := m.(model)
-	return uiModel.Err
+	return uiModel.err
 }
