@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses@latest
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+
+      - name: Run installation tests
+        if: ${{ success() }}
+        run: |
+          gh workflow run homebrew-test.yml
+          gh workflow run scoop-test.yml
