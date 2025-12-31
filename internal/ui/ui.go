@@ -117,6 +117,9 @@ type model struct {
 
 	// Err captures any error that occurs during TUI execution.
 	Err error
+
+	// frameTime is the time of the last frame update.
+	frameTime time.Time
 }
 
 // cursor returns the current cursor position within the prompt.
@@ -169,7 +172,7 @@ func (m model) ready() model {
 // start begins the typing session.
 func (m model) start() model {
 	m.appState = StateSession
-	m.startTime = time.Now()
+	m.startTime = m.frameTime
 	return m
 }
 
@@ -241,7 +244,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) updateMetrics() model {
-	elapsed := time.Since(m.startTime)
+	elapsed := m.frameTime.Sub(m.startTime)
 	m.wpm = int(math.Round(metrics.WPM(m.input, elapsed)))
 	m.accuracy = int(
 		math.Round(metrics.Accuracy(m.prompt, m.input)))
@@ -288,6 +291,8 @@ func (m model) handleCtrlBackspace() model {
 
 // Update handles incoming messages and updates the TUI state.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.frameTime = time.Now()
+
 	switch msg := msg.(type) {
 
 	case initMsg:
