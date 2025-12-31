@@ -5,7 +5,6 @@ project_name: typomat
 before:
   hooks:
     - go mod tidy
-    - go-licenses save ./... --save_path=licenses --force
 
 release:
   prerelease: auto
