@@ -28,6 +28,8 @@ jobs:
 
       - name: Run installation tests
         if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh workflow run homebrew-test.yml
           gh workflow run scoop-test.yml
