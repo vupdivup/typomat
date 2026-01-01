@@ -22,7 +22,7 @@ declarations, string literals and function signatures. These words are then used
 to build short, randomized typing prompts relevant to your codebase.
 
 Run typomat without any arguments to practice on the current directory.
-To use a different source, provide a local path (DIRECTORY) for the program.`,
+To use a different source, provide a local path for the program.`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: run,
 }
