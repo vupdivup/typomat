@@ -1,6 +1,6 @@
 # typomat: turn your code into muscle memory
 
-typomat is a command-line typing practice tool that creates exercises from the contents of your repository — perfect for a quick warmup before work.
+typomat is a command-line typing practice tool that creates exercises from the contents of your repository—perfect for a quick warmup before work.
 
 ![typomat demo](docs/demo.gif)
 
