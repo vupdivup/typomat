@@ -81,9 +81,18 @@ type fileProcessingResult struct {
 }
 
 // Prompt generates a prompt of the maximum specified character length
-// from tokens of the specified directory.
-// This is the main entry point of the domain package.
+// from tokens of the specified directory. This is the main entry point of the
+// domain package.
+// 
+// If the TYPOMAT_PROMPT environment variable is set, its value is used
+// directly as the prompt, bypassing text generation.
 func Prompt(dirPath string, maxLen int) (string, error) {
+	// Check for prompt override via environment variable
+	if envPrompt := os.Getenv("TYPOMAT_PROMPT"); envPrompt != "" {
+		zap.S().Debugw("Using TYPOMAT_PROMPT environment variable as prompt")
+		return envPrompt, nil
+	}
+
 	zap.S().Debugw("Generating prompt from directory text content",
 		"dir_path", dirPath,
 		"max_len", maxLen)
