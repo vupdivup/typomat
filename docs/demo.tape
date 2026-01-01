@@ -3,10 +3,10 @@ Output demo.gif
 Require typomat
 
 Set Shell bash
-Set FontSize 21
+Set FontSize 22
 Set Width 1200
-Set Height 400
-Set Padding 48
+Set Height 360
+Set Padding 24
 
 Env PS1 "$ "
 Env TYPOMAT_PROMPT "lookahead rest width human empty exercises perfect releaser tests overrides artifacts import schema desired filepath carriage"
