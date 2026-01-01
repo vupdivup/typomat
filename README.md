@@ -63,5 +63,6 @@ To use a different source, provide a local path for the program:
 typomat path/to/dir
 ```
 
-> [!NOTE] typomat caches extracted words to a persistent on-disk location. To keep this cache small, avoid passing very large directories like `~` or `/home`. The `--purge` flag can be used to clear the cache if needed.
+> [!NOTE]
+> typomat caches extracted words to a persistent on-disk location. To keep this cache small, avoid passing very large directories like `~` or `/home`. The `--purge` flag can be used to clear the cache if needed.
  
