@@ -1,6 +1,6 @@
 # typomat: turn your code into muscle memory
 
-typomat is a command-line typing practice tool that creates exercises from the contents of your repository — perfect for a quick warmup before work.
+typomat is a command-line typing practice tool that creates exercises from the contents of your repository—perfect for a quick warmup before work.
 
 ![typomat demo](docs/demo.gif)
 
@@ -51,14 +51,18 @@ go install github.com/vupdivup/typomat/cmd/typomat@latest
 
 ## Usage
 
-Run typomat without any arguments to practice on the current directory.
+Run typomat without any arguments to practice on the current directory:
 
 ```bash
 typomat
 ```
 
-To use a different source, provide a local path for the program.
+To use a different source, provide a local path for the program:
 
 ```bash
 typomat path/to/dir
 ```
+
+> [!NOTE]
+> typomat caches extracted words to a persistent on-disk location. To keep this cache small, avoid passing very large directories like `~` or `/home`. The `--purge` flag can be used to clear the cache if needed.
+ 
