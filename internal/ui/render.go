@@ -41,11 +41,14 @@ func renderHelp(m model) string {
 // renderStats renders the typing statistics.
 func renderStats(m model) string {
 	var labelStyle lipgloss.Style
+	var sepStyle lipgloss.Style
 
 	if m.appState == StateSession || m.appState == StateReady {
 		labelStyle = mutedStyle
+		sepStyle = bodyStyle
 	} else {
 		labelStyle = bodyStyle
+		sepStyle = mutedStyle
 	}
 
 	wpmStr := fmt.Sprintf("%d", int(m.wpm))
@@ -53,7 +56,7 @@ func renderStats(m model) string {
 
 	return accentStyle.Render(wpmStr) +
 		labelStyle.Render(" wpm") +
-		bodyStyle.Render(" • ") +
+		sepStyle.Render(" • ") +
 		accentStyle.Render(accStr) +
 		labelStyle.Render(" acc")
 }
