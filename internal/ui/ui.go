@@ -137,7 +137,7 @@ type promptFetchedMsg struct {
 func initialModel(dirPath string) model {
 	help := help.New()
 	help.Styles.ShortKey = accentStyle
-	help.Styles.ShortSeparator = bodyStyle
+	help.Styles.ShortSeparator = mutedStyle
 
 	spinner := spinner.New(
 		spinner.WithSpinner(spinner.Dot), spinner.WithStyle(accentStyle))
