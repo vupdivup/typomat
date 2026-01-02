@@ -7,8 +7,8 @@ Set FontSize 22
 Set Width 1200
 Set Height 360
 Set Padding 24
+Set Theme "Dracula+"
 
-Env PS1 "$ "
 Env TYPOMAT_PROMPT "lookahead rest width human empty exercises perfect releaser tests overrides artifacts import schema desired filepath carriage"
 
 Sleep 100ms
