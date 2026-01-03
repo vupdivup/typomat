@@ -37,8 +37,6 @@ const (
 	// canvasContentWidth is the width available for content inside the canvas.
 	canvasContentWidth = windowContentWidth - 2*canvasPaddingHorizontal
 
-	// promptPoolSize is the number of pre-fetched prompts to maintain.
-	promptPoolSize = 3
 	// maxPromptLen is the maximum length of a typing prompt.
 	maxPromptLen = 128
 )
@@ -98,11 +96,6 @@ type model struct {
 	// mistakes records the positions of mistakes made.
 	mistakes map[int]bool
 
-	// promptPool holds pre-fetched prompts.
-	promptPool []string
-	// promptsBeingFetched tracks the number of ongoing prompt fetches.
-	promptsBeingFetched int
-
 	// startTime is the time when the typing session started.
 	startTime time.Time
 	// wpm is the current words per minute.
@@ -127,10 +120,21 @@ func (m model) cursor() int {
 	return len([]rune(m.input))
 }
 
-// promptFetchedMsg is a message indicating a prompt has been fetched.
-type promptFetchedMsg struct {
+// promptMsg is a message indicating a prompt has been fetched.
+type promptMsg struct {
 	prompt string
 	err    error
+}
+
+func (m model) promptCmd() tea.Cmd {
+	return func() tea.Msg {
+		// Setup is idempotent; only the first call has effect
+		if err := domain.Setup(m.dirPath, maxPromptLen); err != nil {
+			return promptMsg{prompt: "", err: err}
+		}
+		prompt, err := domain.Prompt()
+		return promptMsg{prompt: prompt, err: err}
+	}
 }
 
 // initialModel creates the initial TUI model.
@@ -197,47 +201,6 @@ func initCmd() tea.Cmd {
 	}
 }
 
-// fetchMorePromptsIfNeeded initiates fetching another prompt asynchronously.
-// If a fetch is already in progress or the pool is sufficiently full, it does
-// nothing.
-// Make sure to capture the new model state to reflect the necessary changes.
-func (m model) fetchMorePromptsIfNeeded() (model, tea.Cmd) {
-	if len(m.promptPool) >= promptPoolSize || m.promptsBeingFetched > 0 {
-		return m, nil
-	}
-
-	m.promptsBeingFetched++
-	return m, func() tea.Msg {
-		prompt, err := domain.Prompt(m.dirPath, maxPromptLen)
-		return promptFetchedMsg{prompt: prompt, err: err}
-	}
-}
-
-// acceptPrompt adds a fetched prompt to the model's pool.
-func (m model) acceptPrompt(prompt string) model {
-	m.promptsBeingFetched--
-	m.promptPool = append(m.promptPool, prompt)
-	zap.S().Debugw("Pooled new prompt",
-		"prompt", prompt,
-		"pool_size", len(m.promptPool))
-	return m
-}
-
-// consumePrompt removes the next prompt from the pool and sets it as the
-// current prompt.
-func (m model) consumePrompt() model {
-	if len(m.promptPool) == 0 {
-		return m
-	}
-	prompt := m.promptPool[0]
-	m.promptPool = m.promptPool[1:]
-	m.prompt = prompt
-	zap.S().Debugw("Consumed prompt from pool",
-		"prompt", prompt,
-		"pool_size", len(m.promptPool))
-	return m
-}
-
 // Init is the initial command for the TUI.
 func (m model) Init() tea.Cmd {
 	return initCmd()
@@ -296,9 +259,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case initMsg:
-		var cmd tea.Cmd
-		m, cmd = m.load().fetchMorePromptsIfNeeded()
-		return m, tea.Batch(m.spinner.Tick, cmd)
+		m = m.load()
+		return m, tea.Batch(m.spinner.Tick, m.promptCmd())
 
 	case tea.KeyMsg:
 		if key.Matches(msg, globalKeys.Quit) {
@@ -308,17 +270,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.appState {
 		case StateBreak:
 			if key.Matches(msg, breakKeys.Restart) {
-				// Check if more prompts are available
-				if len(m.promptPool) == 0 {
-					var cmd tea.Cmd
-					m, cmd = m.load().fetchMorePromptsIfNeeded()
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
-
-				// Load next prompt from pool
-				m = m.consumePrompt().ready()
-
-				return m.fetchMorePromptsIfNeeded()
+				m = m.load()
+				return m, tea.Batch(m.spinner.Tick, m.promptCmd())
 			}
 
 		case StateSession, StateReady:
@@ -366,20 +319,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case promptFetchedMsg:
+	case promptMsg:
 		if msg.err != nil {
 			m.err = msg.err
 			return m, tea.Quit
 		}
-
-		m = m.acceptPrompt(msg.prompt)
-
-		if m.appState == StateLoading {
-			m = m.consumePrompt().ready()
-		}
-
-		// Fetch more prompts if pool is low
-		return m.fetchMorePromptsIfNeeded()
+		m.prompt = msg.prompt
+		return m.ready(), nil
 
 	case spinner.TickMsg:
 		if m.appState != StateLoading {
