@@ -24,12 +24,18 @@ var (
 	// dbId is the identifier of the current token database, static throughout
 	// the app lifecycle.
 	dbId string
-	// hasTokenized indicates whether the directory has already been tokenized.
-	// Set to true only once per app lifecycle.
-	hasTokenized bool = false
+
+	// prompts is a channel for delivering generated prompts.
+	prompts chan fetchResult = make(chan fetchResult, promptBuf-1)
+
+	// setuped indicates whether the domain package has been initialized.
+	setuped bool = false
 )
 
 const (
+	// promptBuf is the size of the prompt buffer channel.
+	promptBuf = 3
+
 	// maxFileSize is the maximum file size (in bytes) eligible for
 	// tokenization.
 	maxFileSize = 24_000_000 // 24 MB
@@ -80,22 +86,15 @@ type fileProcessingResult struct {
 	err error
 }
 
-// Prompt generates a prompt of the maximum specified character length
-// from tokens of the specified directory. This is the main entry point of the
-// domain package.
-// 
-// If the TYPOMAT_PROMPT environment variable is set, its value is used
-// directly as the prompt, bypassing text generation.
-func Prompt(dirPath string, maxLen int) (string, error) {
-	// Check for prompt override via environment variable
-	if envPrompt := os.Getenv("TYPOMAT_PROMPT"); envPrompt != "" {
-		zap.S().Debugw("Using TYPOMAT_PROMPT environment variable as prompt")
-		return envPrompt, nil
+// Setup initializes the domain package with the specified directory path
+// and maximum prompt length.
+//
+// This function should be called once at application startup.
+// Subsequent calls have no effect.
+func Setup(dirPath string, maxLen int) error {
+	if setuped {
+		return nil
 	}
-
-	zap.S().Debugw("Generating prompt from directory text content",
-		"dir_path", dirPath,
-		"max_len", maxLen)
 
 	// Check if directory exists
 	dirExists, err := files.DirExists(dirPath)
@@ -103,12 +102,12 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 		zap.S().Errorw("Failed to check if directory exists",
 			"dir_path", dirPath,
 			"error", err)
-		return "", ErrFileOperation
+		return ErrFileOperation
 	}
 	if !dirExists {
 		zap.S().Errorw("Directory does not exist",
 			"dir_path", dirPath)
-		return "", ErrInvalidDirPath
+		return ErrInvalidDirPath
 	}
 
 	// Normalize path
@@ -117,19 +116,69 @@ func Prompt(dirPath string, maxLen int) (string, error) {
 		zap.S().Errorw("Failed to get absolute path",
 			"dir_path", dirPath,
 			"error", err)
-		return "", ErrInvalidDirPath
+		return ErrInvalidDirPath
 	}
 	dbId = absPath
 
-	if !hasTokenized {
-		// Tokenize directory if not done already (1st call)
-		if err := ProcessDirectory(absPath); err != nil {
-			return "", err
-		}
-		hasTokenized = true
+	// Tokenize directory
+	if err := ProcessDirectory(absPath); err != nil {
+		return err
 	}
 
-	return generatePrompt(maxLen)
+	// Start prompt producer
+	go produce(maxLen)
+
+	setuped = true
+	return nil
+}
+
+// Prompt generates a prompt of the maximum specified character length
+// from tokens of the specified directory. This is the main entry point of the
+// domain package.
+//
+// If the TYPOMAT_PROMPT environment variable is set, its value is used
+// directly as the prompt, bypassing text generation.
+func Prompt() (string, error) {
+	// Check for prompt override via environment variable
+	if envPrompt := os.Getenv("TYPOMAT_PROMPT"); envPrompt != "" {
+		zap.S().Debugw("Using TYPOMAT_PROMPT environment variable as prompt")
+		return envPrompt, nil
+	}
+
+	zap.S().Debugw("Generating prompt from directory text content")
+
+	result := <-prompts
+	return result.prompt, result.err
+}
+
+// fetchResult encapsulates the result of a prompt generation.
+type fetchResult struct {
+	// prompt is the generated prompt string.
+	prompt string
+	// err is any error encountered during prompt generation.
+	err error
+}
+
+// produce continuously generates prompts and sends them to the prompts channel.
+// Run as a goroutine.
+//
+// In case of an error during prompt generation, the error is sent through the
+// channel and the goroutine exits.
+func produce(maxLen int) {
+	for {
+		prompt, err := generatePrompt(maxLen)
+		if err != nil {
+			zap.S().Errorw("Failed to generate prompt",
+				"error", err)
+			prompts <- fetchResult{prompt: "", err: err}
+			return
+		}
+		zap.S().Debugw("Generated new prompt",
+			"max_len", maxLen,
+			"prompt", prompt)
+
+		prompts <- fetchResult{prompt: prompt, err: nil}
+	}
 }
 
 // ProcessDirectory tokenizes all eligible files in the specified directory
