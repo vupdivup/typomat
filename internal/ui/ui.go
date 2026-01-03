@@ -126,9 +126,13 @@ type promptMsg struct {
 	err    error
 }
 
-func (m model) promptCmd(maxLen int) tea.Cmd {
+func (m model) promptCmd() tea.Cmd {
 	return func() tea.Msg {
-		prompt, err := domain.Prompt(m.dirPath, maxLen)
+		// Setup is idempotent; only the first call has effect
+		if err := domain.Setup(m.dirPath, maxPromptLen); err != nil {
+			return promptMsg{prompt: "", err: err}
+		}
+		prompt, err := domain.Prompt()
 		return promptMsg{prompt: prompt, err: err}
 	}
 }
@@ -256,7 +260,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case initMsg:
 		m = m.load()
-		return m, tea.Batch(m.spinner.Tick, m.promptCmd(maxPromptLen))
+		return m, tea.Batch(m.spinner.Tick, m.promptCmd())
 
 	case tea.KeyMsg:
 		if key.Matches(msg, globalKeys.Quit) {
@@ -267,7 +271,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case StateBreak:
 			if key.Matches(msg, breakKeys.Restart) {
 				m = m.load()
-				return m, tea.Batch(m.spinner.Tick, m.promptCmd(maxPromptLen))
+				return m, tea.Batch(m.spinner.Tick, m.promptCmd())
 			}
 
 		case StateSession, StateReady:
