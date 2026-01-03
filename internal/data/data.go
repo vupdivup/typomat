@@ -191,9 +191,6 @@ func DeleteTokensOfFile(dbId string, path string) error {
 
 // IterUniqueTokens returns an iterator over distinct tokens in the database.
 func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
-	zap.S().Debugw("Creating iterator for unique tokens",
-		"db_id", dbId)
-
 	return func(yield func(TokenResult) bool) {
 		// Open the database
 		db, err := openDb(dbId)
