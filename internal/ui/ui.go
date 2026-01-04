@@ -120,20 +120,21 @@ func (m model) cursor() int {
 	return len([]rune(m.input))
 }
 
-// promptMsg is a message indicating a prompt has been fetched.
-type promptMsg struct {
+// loadedMsg is a message indicating that the first prompt has been loaded.
+type loadedMsg struct {
 	prompt string
 	err    error
 }
 
-func (m model) promptCmd() tea.Cmd {
+// loadCmd returns a command to process the source directory and load a new
+// prompt.
+func (m model) loadCmd() tea.Cmd {
 	return func() tea.Msg {
-		// Setup is idempotent; only the first call has effect
 		if err := domain.Setup(m.dirPath, maxPromptLen); err != nil {
-			return promptMsg{prompt: "", err: err}
+			return loadedMsg{prompt: "", err: err}
 		}
 		prompt, err := domain.Prompt()
-		return promptMsg{prompt: prompt, err: err}
+		return loadedMsg{prompt: prompt, err: err}
 	}
 }
 
@@ -162,12 +163,13 @@ func (m model) load() model {
 }
 
 // ready sets up the model for a ready state with a new prompt.
-func (m model) ready() model {
+func (m model) ready(prompt string) model {
 	m.mistakes = make(map[int]bool)
 	m.input = ""
 	m.wpm = 0
 	m.accuracy = 0.0
 	m.appState = StateReady
+	m.prompt = prompt
 	zap.S().Infow("Session ready",
 		"prompt", m.prompt)
 	return m
@@ -260,7 +262,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case initMsg:
 		m = m.load()
-		return m, tea.Batch(m.spinner.Tick, m.promptCmd())
+		return m, tea.Batch(m.spinner.Tick, m.loadCmd())
 
 	case tea.KeyMsg:
 		if key.Matches(msg, globalKeys.Quit) {
@@ -270,8 +272,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.appState {
 		case StateBreak:
 			if key.Matches(msg, breakKeys.Restart) {
-				m = m.load()
-				return m, tea.Batch(m.spinner.Tick, m.promptCmd())
+				// NOTE: no async load on subsequent prompts
+				// Domain-layer pooling should make this fast enough
+				prompt, err := domain.Prompt()
+				if err != nil {
+					m.err = err
+					return m, tea.Quit
+				}
+				m = m.ready(prompt)
+				return m, nil
 			}
 
 		case StateSession, StateReady:
@@ -319,13 +328,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-	case promptMsg:
+	case loadedMsg:
 		if msg.err != nil {
 			m.err = msg.err
 			return m, tea.Quit
 		}
-		m.prompt = msg.prompt
-		return m.ready(), nil
+		return m.ready(msg.prompt), nil
 
 	case spinner.TickMsg:
 		if m.appState != StateLoading {
