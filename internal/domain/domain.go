@@ -30,6 +30,9 @@ var (
 
 	// setuped indicates whether the domain package has been initialized.
 	setuped bool = false
+
+	// progress indicates the progress of directory processing.
+	progress float64
 )
 
 const (
@@ -136,6 +139,8 @@ func Setup(dirPath string, maxLen int) error {
 // from tokens of the specified directory. This is the main entry point of the
 // domain package.
 //
+// The function pools prompts in the background for efficiency.
+//
 // If the TYPOMAT_PROMPT environment variable is set, its value is used
 // directly as the prompt, bypassing text generation.
 func Prompt() (string, error) {
@@ -149,6 +154,12 @@ func Prompt() (string, error) {
 
 	result := <-prompts
 	return result.prompt, result.err
+}
+
+// Progress returns the current progress of directory processing as a float
+// between 0 and 1.
+func Progress() float64 {
+	return progress
 }
 
 // fetchResult encapsulates the result of a prompt generation.
@@ -275,7 +286,12 @@ func ProcessDirectory(dirPath string) error {
 
 	// Receive file processed signals and flush tokens as needed
 	numErrs := 0
+	processed := 0
 	for result := range results {
+		// Update progress
+		processed++
+		progress = float64(processed) / float64(len(paths))
+
 		// Check for processing error, abort if exceeding max allowed
 		if result.err != nil {
 			numErrs++
@@ -338,6 +354,8 @@ func ProcessDirectory(dirPath string) error {
 			return err
 		}
 	}
+
+	progress = 100
 
 	return nil
 }
