@@ -139,8 +139,8 @@ func renderLoad(m model) string {
 	// Normalize progress to percentage
 	progress := int(min(math.Round(domain.Progress()*100), 99))
 
-	return m.spinner.View() + bodyStyle.Render(
-		fmt.Sprintf(" Coming up with words... %2d%%\n", progress))
+	return m.spinner.View() + bodyStyle.Render(" Coming up with words... ") +
+		mutedStyle.Render(fmt.Sprintf("%2d%%", progress))
 }
 
 // renderCanvas renders the main canvas area based on the application state.
