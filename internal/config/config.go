@@ -31,13 +31,13 @@ var (
 // Init initializes the configuration by setting up necessary directories
 // and configuring the logger.
 func Init() error {
-	configDir, err := os.UserCacheDir()
+	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return ErrInit
 	}
 
 	// Create application directory
-	appDir = filepath.Join(configDir, AppName)
+	appDir = filepath.Join(cacheDir, AppName)
 	if err := os.MkdirAll(appDir, 0o755); err != nil {
 		return ErrInit
 	}
