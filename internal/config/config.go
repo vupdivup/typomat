@@ -31,7 +31,7 @@ var (
 // Init initializes the configuration by setting up necessary directories
 // and configuring the logger.
 func Init() error {
-	configDir, err := os.UserConfigDir()
+	configDir, err := os.UserCacheDir()
 	if err != nil {
 		return ErrInit
 	}
