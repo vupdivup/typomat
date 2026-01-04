@@ -11,7 +11,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   fmt.Sprintf("%s [DIRECTORY]", config.AppName),
+	Use:   fmt.Sprintf("%s <directory>", config.AppName),
 	Short: "Turn your code into muscle memory",
 	Long: `
 typomat is a command-line typing practice tool that creates exercises
@@ -21,9 +21,8 @@ It runs through a directory's source code, extracting words from variable
 declarations, string literals and function signatures. These words are then used
 to build short, randomized typing prompts relevant to your codebase.
 
-Run typomat without any arguments to practice on the current directory.
-To use a different source, provide a local path for the program.`,
-	Args: cobra.MaximumNArgs(1),
+Run typomat by passing the path to a directory you'd like to practice on.`,
+	Args: cobra.ExactArgs(1),
 	RunE: run,
 }
 
@@ -39,11 +38,10 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	dirPath := "."
-	if len(args) > 0 {
-		dirPath = args[0]
-	}
+	// Parse args
+	dirPath := args[0]
 
+	// Launch UI
 	return ui.Launch(dirPath)
 }
 
