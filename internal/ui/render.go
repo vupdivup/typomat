@@ -2,11 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vupdivup/typomat/internal/config"
+	"github.com/vupdivup/typomat/internal/domain"
 	"github.com/vupdivup/typomat/pkg/text"
 )
 
@@ -134,7 +136,11 @@ func renderPrompt(m model) string {
 
 // renderLoad renders the loading indicator.
 func renderLoad(m model) string {
-	return m.spinner.View() + bodyStyle.Render(" Coming up with words...")
+	// Normalize progress to percentage
+	progress := int(min(math.Round(domain.Progress()*100), 99))
+
+	return m.spinner.View() + bodyStyle.Render(
+		fmt.Sprintf(" Coming up with words... %2d%%\n", progress))
 }
 
 // renderCanvas renders the main canvas area based on the application state.

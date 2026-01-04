@@ -30,6 +30,9 @@ var (
 
 	// setuped indicates whether the domain package has been initialized.
 	setuped bool = false
+
+	// progress indicates the progress of directory processing.
+	progress float64
 )
 
 const (
@@ -149,6 +152,12 @@ func Prompt() (string, error) {
 
 	result := <-prompts
 	return result.prompt, result.err
+}
+
+// Progress returns the current progress of directory processing as a float
+// between 0 and 1.
+func Progress() float64 {
+	return progress
 }
 
 // fetchResult encapsulates the result of a prompt generation.
@@ -275,7 +284,12 @@ func ProcessDirectory(dirPath string) error {
 
 	// Receive file processed signals and flush tokens as needed
 	numErrs := 0
+	processed := 0
 	for result := range results {
+		// Update progress
+		processed++
+		progress = float64(processed) / float64(len(paths))
+
 		// Check for processing error, abort if exceeding max allowed
 		if result.err != nil {
 			numErrs++
@@ -338,6 +352,8 @@ func ProcessDirectory(dirPath string) error {
 			return err
 		}
 	}
+
+	progress = 100
 
 	return nil
 }
