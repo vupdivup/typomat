@@ -139,6 +139,8 @@ func Setup(dirPath string, maxLen int) error {
 // from tokens of the specified directory. This is the main entry point of the
 // domain package.
 //
+// The function pools prompts in the background for efficiency.
+//
 // If the TYPOMAT_PROMPT environment variable is set, its value is used
 // directly as the prompt, bypassing text generation.
 func Prompt() (string, error) {
