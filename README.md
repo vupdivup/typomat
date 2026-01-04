@@ -51,13 +51,7 @@ go install github.com/vupdivup/typomat/cmd/typomat@latest
 
 ## Usage
 
-Run typomat without any arguments to practice on the current directory:
-
-```bash
-typomat
-```
-
-To use a different source, provide a local path for the program:
+Start a typing session by passing the path to the directory you'd like to practice on:
 
 ```bash
 typomat path/to/dir

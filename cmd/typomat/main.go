@@ -19,7 +19,8 @@ It runs through a directory's source code, extracting words from variable
 declarations, string literals and function signatures. These words are then used
 to build short, randomized typing prompts relevant to your codebase.
 
-Run typomat by passing the path to the directory you'd like to practice on.`,
+Start a typing session by passing the path to the directory you'd like to
+practice on.`,
 	Args: cobra.ExactArgs(1),
 	RunE: run,
 }
