@@ -343,7 +343,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	// If there was an error, exit without rendering the app.
 	if m.err != nil {
-		return "\n"
+		return ""
 	}
 
 	return renderApp(m)
