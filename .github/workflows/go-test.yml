@@ -21,3 +21,6 @@ jobs:
     
     - name: Run tests
       run: go test ./...
+
+    - name: Check build
+      run: go build ./cmd/typomat
