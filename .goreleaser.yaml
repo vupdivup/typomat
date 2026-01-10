@@ -33,7 +33,6 @@ archives:
     files:
       - LICENSE*
       - README*
-      - licenses/**/*
 
 homebrew_casks:
   - name: typomat
