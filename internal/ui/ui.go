@@ -85,6 +85,8 @@ const (
 type model struct {
 	// dirPath is the directory path for prompts.
 	dirPath string
+	// cache indicates whether caching is enabled.
+	cache bool
 
 	// appState is the current application appState.
 	appState AppState
@@ -130,7 +132,7 @@ type loadedMsg struct {
 // prompt.
 func (m model) loadCmd() tea.Cmd {
 	return func() tea.Msg {
-		if err := domain.Setup(m.dirPath, maxPromptLen); err != nil {
+		if err := domain.Setup(m.dirPath, m.cache, maxPromptLen); err != nil {
 			return loadedMsg{prompt: "", err: err}
 		}
 		prompt, err := domain.Prompt()
@@ -139,7 +141,7 @@ func (m model) loadCmd() tea.Cmd {
 }
 
 // initialModel creates the initial TUI model.
-func initialModel(dirPath string) model {
+func initialModel(dirPath string, cache bool) model {
 	help := help.New()
 	help.Styles.ShortKey = accentStyle
 	help.Styles.ShortSeparator = mutedStyle
@@ -149,6 +151,7 @@ func initialModel(dirPath string) model {
 
 	m := model{
 		dirPath: dirPath,
+		cache:   cache,
 		help:    help,
 		spinner: spinner,
 	}
@@ -357,13 +360,19 @@ func (m model) View() string {
 	return renderApp(m)
 }
 
-// Launch starts the TUI with the given text prompt as a scrollable typing
-// interface.
-func Launch(dirPath string) error {
-	p := tea.NewProgram(initialModel(dirPath))
-	m, err := p.Run()
-	if err != nil {
-		return err
+// Launch runs the TUI on the specified directory path, optionally using cached data.
+//
+// This function covers the entire lifecycle of the TUI, including setup and
+// teardown.
+func Launch(dirPath string, cache bool) error {
+	p := tea.NewProgram(initialModel(dirPath, cache))
+	m, runErr := p.Run()
+	teardownErr := domain.Teardown()
+
+	if runErr != nil {
+		return runErr
+	} else if teardownErr != nil {
+		return teardownErr
 	}
 
 	uiModel := m.(model)
