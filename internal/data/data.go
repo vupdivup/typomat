@@ -279,6 +279,10 @@ func Setup(dirPath string, cache bool) error {
 
 // Teardown closes the database connection and cleans up temporary files.
 func Teardown() error {
+	if db == nil {
+		return nil
+	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		zap.S().Errorw("Failed to get sql.DB from gorm.DB during teardown",
