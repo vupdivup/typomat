@@ -20,8 +20,10 @@ const (
 )
 
 var (
-	appDir string
-	dbDir  string
+	appDir      string
+	dbDir       string
+	tempDbDir   string
+	cachedDbDir string
 )
 
 // Init initializes the configuration by setting up necessary directories
@@ -32,22 +34,18 @@ func Init() error {
 		return ErrInit
 	}
 
-	// Create application directory
+	// Create application directories
 	appDir = filepath.Join(cacheDir, AppName)
-	if err := os.MkdirAll(appDir, 0o755); err != nil {
-		return ErrInit
-	}
-
-	// Create database directory
 	dbDir = filepath.Join(appDir, "db")
-	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		return ErrInit
-	}
-
-	// Create logs directory
 	logDir := filepath.Join(appDir, "logs")
-	if err := os.MkdirAll(logDir, 0o755); err != nil {
-		return ErrInit
+	tempDbDir := filepath.Join(dbDir, "tmp")
+	cachedDbDir := filepath.Join(dbDir, "cache")
+
+	dirs := []string{appDir, dbDir, logDir, tempDbDir, cachedDbDir}
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return ErrInit
+		}
 	}
 
 	// Determine log file path
@@ -81,9 +79,21 @@ func DbDir() string {
 	return dbDir
 }
 
+// TempDbDir returns the directory path where temporary database files are
+// stored.
+func TempDbDir() string {
+	return tempDbDir
+}
+
+// CachedDbDir returns the directory path where cached database files are
+// stored.
+func CachedDbDir() string {
+	return cachedDbDir
+}
+
 // PurgeCache deletes all cached data stored in the database directory.
 func PurgeCache() error {
 	zap.S().Infow("Purging application cache",
 		"db_dir", dbDir)
-	return files.RemoveChildren(dbDir)
+	return files.RemoveChildren(cachedDbDir)
 }
