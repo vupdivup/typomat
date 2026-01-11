@@ -43,19 +43,26 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Handle cache flag
+	cache, err := cmd.Flags().GetBool("cache")
+	if err != nil {
+		return err
+	}
+
 	// Parse args
 	dirPath := args[0]
 
 	// Launch UI
-	return ui.Launch(dirPath)
+	return ui.Launch(dirPath, cache)
 }
 
 func init() {
+	rootCmd.Flags().BoolP("cache", "c", false, "store data for subsequent runs")
 	rootCmd.Flags().BoolP("purge", "p", false, "purge application cache")
 }
 
 func main() {
-	defer zap.S().Sync() //nolint:errcheck
+	defer zap.S().Sync() // nolint:errcheck
 
 	// Run main command
 	rootCmd.Execute() // nolint:errcheck
