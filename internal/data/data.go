@@ -12,6 +12,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"github.com/vupdivup/typomat/internal/config"
+	"github.com/vupdivup/typomat/pkg/files"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
@@ -23,8 +24,14 @@ const (
 	batchSize = 100
 )
 
-// dbCache is a map of opened database connections keyed by their IDs.
-var dbCache = map[string]*gorm.DB{}
+var (
+	// db is the global database connection.
+	db *gorm.DB
+	// dbPath is the path to the database file.
+	dbPath string
+	// dirPath is the directory path associated with the database.
+	dirPath string
+)
 
 // Token represents a token record in the database.
 type Token struct {
@@ -69,76 +76,53 @@ func (f *File) VersionEquals(other File) bool {
 }
 
 // UpsertTokens inserts or updates the given tokens in a database.
-func UpsertTokens(dbId string, tokens []Token) error {
-	db, err := openDb(dbId)
-	if err != nil {
-		return err
-	}
-
+func UpsertTokens(tokens []Token) error {
 	result := db.Clauses(clause.OnConflict{UpdateAll: true}).
 		CreateInBatches(tokens, batchSize)
 	if result.Error != nil {
 		zap.S().Errorw("Failed to upsert tokens into database",
-			"db_id", dbId,
 			"error", result.Error)
 		return ErrQuery
 	}
 
 	zap.S().Debugw("Upserted tokens into database",
 		"token_count", len(tokens),
-		"rows_affected", result.RowsAffected,
-		"db_id", dbId)
+		"rows_affected", result.RowsAffected)
 	return nil
 }
 
 // UpsertFiles uploads or updates file records in a database.
-func UpsertFiles(dbId string, files []File) error {
-	db, err := openDb(dbId)
-	if err != nil {
-		return err
-	}
-
+func UpsertFiles(files []File) error {
 	result := db.Clauses(clause.OnConflict{UpdateAll: true}).
 		CreateInBatches(files, batchSize)
 	if result.Error != nil {
 		zap.S().Errorw("Failed to upsert files into database",
-			"db_id", dbId,
 			"error", result.Error)
 		return ErrQuery
 	}
 
 	zap.S().Debugw("Upserted files into database",
 		"file_count", len(files),
-		"rows_affected", result.RowsAffected,
-		"db_id", dbId)
+		"rows_affected", result.RowsAffected)
 	return nil
 }
 
 // DeleteFile removes a file record from the database, optionally cascading
 // the deletion to associated tokens.
-func DeleteFile(dbId string, file File, cascade bool) error {
-	// Open the database
-	db, err := openDb(dbId)
-	if err != nil {
-		return err
-	}
-
+func DeleteFile(file File, cascade bool) error {
 	// Delete the file record
 	if err := db.Delete(&file).Error; err != nil {
 		zap.S().Errorw("Failed to delete file from database",
 			"file_path", file.Path,
-			"db_id", dbId,
 			"error", err)
 		return ErrQuery
 	}
 
 	if !cascade {
 		zap.S().Debugw("Deleted file from database",
-			"file_path", file.Path,
-			"db_id", dbId)
+			"file_path", file.Path)
 		zap.S().Debugw("Skipping cascade delete of associated tokens",
-			"file_path", file.Path,
-			"db_id", dbId)
+			"file_path", file.Path)
 		return nil
 	}
 
@@ -149,27 +133,19 @@ func DeleteFile(dbId string, file File, cascade bool) error {
 		zap.S().Errorw(
 			"Failed to cascade delete tokens from database",
 			"file_path", file.Path,
-			"db_id", dbId,
 			"error", err)
 		return ErrQuery
 	}
 
 	zap.S().Debugw(
 		"Deleted file and associated tokens from database",
-		"file_path", file.Path,
-		"db_id", dbId)
+		"file_path", file.Path)
 	return nil
 }
 
 // DeleteTokensOfFile removes all tokens associated with a specific file
 // from the database.
-func DeleteTokensOfFile(dbId string, path string) error {
-	// Open the database
-	db, err := openDb(dbId)
-	if err != nil {
-		return err
-	}
-
+func DeleteTokensOfFile(path string) error {
 	// Delete associated tokens
 	if err := db.
 		Where("path = ?", path).
@@ -177,33 +153,23 @@ func DeleteTokensOfFile(dbId string, path string) error {
 		zap.S().Errorw(
 			"Failed to delete tokens of file from database",
 			"file_path", path,
-			"db_id", dbId,
 			"error", err)
 		return ErrQuery
 	}
 
 	zap.S().Debugw("Deleted tokens of file from database",
-		"file_path", path,
-		"db_id", dbId)
+		"file_path", path)
 
 	return nil
 }
 
 // IterUniqueTokens returns an iterator over distinct tokens in the database.
-func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
+func IterUniqueTokens() iter.Seq[TokenResult] {
 	return func(yield func(TokenResult) bool) {
-		// Open the database
-		db, err := openDb(dbId)
-		if err != nil {
-			yield(TokenResult{Err: err})
-			return
-		}
-
 		// Query distinct tokens
 		rows, err := db.Model(&Token{}).Distinct("value").Rows()
 		if err != nil {
 			zap.S().Errorw("Failed to query distinct tokens",
-				"db_id", dbId,
 				"error", err)
 			yield(TokenResult{Err: ErrQuery})
 			return
@@ -215,7 +181,6 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 			var token Token
 			if err := db.ScanRows(rows, &token); err != nil {
 				zap.S().Errorw("Failed to scan token row",
-					"db_id", dbId,
 					"error", err)
 				yield(TokenResult{Err: ErrQuery})
 				return
@@ -228,55 +193,62 @@ func IterUniqueTokens(dbId string) iter.Seq[TokenResult] {
 }
 
 // GetFiles retrieves all file records from the database.
-func GetFiles(dbId string) ([]File, error) {
-	db, err := openDb(dbId)
-	if err != nil {
-		return []File{}, err
-	}
-
+func GetFiles() ([]File, error) {
 	var files []File
 	if err := db.Find(&files).Error; err != nil {
 		zap.S().Errorw("Failed to retrieve files from database",
-			"db_id", dbId,
 			"error", err)
 		return []File{}, ErrQuery
 	}
 
 	zap.S().Debugw("Retrieved files from database",
-		"file_count", len(files),
-		"db_id", dbId)
+		"file_count", len(files))
 	return files, nil
 }
 
-// openDb opens (or creates) a database with the given identifier.
-// Cached database connections are reused.
-func openDb(id string) (*gorm.DB, error) {
-	// Check if the database is already opened and cached
-	if db, ok := dbCache[id]; ok {
-		return db, nil
-	}
-
+// Setup initializes the database connection for the specified directory.
+// If a cached database already exists for the directory, it will be used.
+// Alternatively, if cache is true, the cached database will be used or created.
+func Setup(dirPath string, cache bool) error {
 	// Hash the ID to create a filename
 	h := sha256.New()
-	h.Write([]byte(id))
+	h.Write([]byte(dirPath))
 	hashedId := hex.EncodeToString(h.Sum(nil))
 
-	// Determine the database file path
-	dbPath := filepath.Join(config.DbDir(), hashedId+".db")
+	// Check if the database was cached on a previous run
+	cachedDbPath := filepath.Join(config.CachedDbDir(), hashedId+".db")
+	cacheExists, err := files.FileExists(cachedDbPath)
+	if err != nil {
+		zap.S().Errorw("Failed to check cached database existence",
+			"db_id", dirPath,
+			"db_path", cachedDbPath,
+			"error", err)
+		return ErrConn
+	}
+
+	// If cache is enabled or a cached database exists, use it
+	if cacheExists || cache {
+		zap.S().Debugw("Using cached database",
+			"db_id", dirPath,
+			"db_path", cachedDbPath)
+		dbPath = cachedDbPath
+	} else {
+		dbPath = filepath.Join(config.TempDbDir(), hashedId+".db")
+	}
 
 	// Open (or create) the SQLite database
-	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
 		zap.S().Errorw("Failed to open database",
-			"db_id", id,
+			"db_id", dirPath,
 			"db_path", dbPath,
 			"error", err)
-		return nil, ErrConn
+		return ErrConn
 	}
-	zap.S().Debugw("Opened database",
-		"db_id", id,
+	zap.S().Infow("Opened database",
+		"db_id", dirPath,
 		"db_path", dbPath)
 
 	// Perform migrations
@@ -287,23 +259,47 @@ func openDb(id string) (*gorm.DB, error) {
 		}
 
 		zap.S().Errorw("Failed to migrate or create database schema",
-			"db_id", id,
+			"db_id", dirPath,
 			"error", err)
 
 		if i == 1 {
-			return nil, ErrQuery
+			return ErrQuery
 		}
 
 		// Try to purge cache and reopen
 		if err := config.PurgeCache(); err != nil {
 			zap.S().Errorw("Failed to purge cache after migration error",
-				"db_id", id,
+				"db_id", dirPath,
 				"error", err)
 		}
 	}
 
-	// Cache the opened database
-	dbCache[id] = db
+	return nil
+}
 
-	return db, nil
+// Teardown closes the database connection and cleans up temporary files.
+func Teardown() error {
+	if db == nil {
+		return nil
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		zap.S().Errorw("Failed to get sql.DB from gorm.DB during teardown",
+			"error", err)
+		return ErrCleanup
+	}
+	if err := sqlDB.Close(); err != nil {
+		zap.S().Errorw("Failed to close sql.DB during teardown",
+			"error", err)
+		return ErrCleanup
+	}
+
+	// Ensure temporary database files are removed
+	if err := files.RemoveChildren(config.TempDbDir()); err != nil {
+		zap.S().Errorw("Failed to remove temporary database files during teardown",
+			"error", err)
+		return ErrCleanup
+	}
+	return nil
 }
