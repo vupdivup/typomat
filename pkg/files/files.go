@@ -55,6 +55,18 @@ func DirExists(path string) (bool, error) {
 	return info.IsDir(), nil
 }
 
+// FileExists checks if a file exists at the given path.
+func FileExists(path string) (bool, error) {
+	info, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return !info.IsDir(), nil
+}
+
 // RemoveChildren removes all files and subdirectories within the specified
 // directory.
 func RemoveChildren(dirPath string) error {

@@ -64,6 +64,34 @@ func TestDirExists(t *testing.T) {
 	}
 }
 
+func TestFileExists(t *testing.T) {
+	cases := []struct {
+		relPath string
+		want    bool
+	}{
+		{"testdata/file_exists/file1.txt", true},
+		{"testdata/file_exists/parent/file2.log", true},
+		{"testdata/file_exists/nonexistent.txt", false},
+		{"/nonexistent/absolute/file.txt", false},
+		// Directory should return false (not a file)
+		{"testdata/file_exists/parent", false},
+	}
+
+	for _, c := range cases {
+		// Relative path check
+		relExists, err := FileExists(c.relPath)
+		assert.NoError(t, err)
+		assert.Equal(t, c.want, relExists)
+
+		// Absolute path check
+		absPath, err := filepath.Abs(c.relPath)
+		assert.NoError(t, err)
+		absExists, err := FileExists(absPath)
+		assert.NoError(t, err)
+		assert.Equal(t, c.want, absExists)
+	}
+}
+
 func TestRemoveChildren(t *testing.T) {
 	dirs := []string{
 		"testdata/remove_children/dir",
