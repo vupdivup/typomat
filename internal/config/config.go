@@ -22,6 +22,7 @@ const (
 var (
 	appDir      string
 	dbDir       string
+	logDir      string
 	tempDbDir   string
 	cachedDbDir string
 )
@@ -37,9 +38,9 @@ func Init() error {
 	// Create application directories
 	appDir = filepath.Join(cacheDir, AppName)
 	dbDir = filepath.Join(appDir, "db")
-	logDir := filepath.Join(appDir, "logs")
-	tempDbDir := filepath.Join(dbDir, "tmp")
-	cachedDbDir := filepath.Join(dbDir, "cache")
+	logDir = filepath.Join(appDir, "logs")
+	tempDbDir = filepath.Join(dbDir, "tmp")
+	cachedDbDir = filepath.Join(dbDir, "cache")
 
 	dirs := []string{appDir, dbDir, logDir, tempDbDir, cachedDbDir}
 	for _, dir := range dirs {
