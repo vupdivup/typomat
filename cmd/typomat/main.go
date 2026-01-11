@@ -32,12 +32,6 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Clean old files
-	// NOTE: cleanup errors don't block application startup
-	if err := config.RemoveOldFiles(); err != nil {
-		zap.S().Error("Failed to clean old files", "error", err)
-	}
-
 	// Handle purge flag
 	purge, err := cmd.Flags().GetBool("purge")
 	if err != nil {

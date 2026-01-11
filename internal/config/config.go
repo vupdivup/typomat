@@ -17,10 +17,6 @@ const (
 	ProductName = "typomat"
 	// AppCommandName is the command-line name of the application.
 	AppName = "typomat"
-
-	// retentionPeriod defines how long db and log files are kept before
-	// being cleaned up.
-	retentionPeriod = 7 * 24 * time.Hour
 )
 
 var (
@@ -90,53 +86,4 @@ func PurgeCache() error {
 	zap.S().Infow("Purging application cache",
 		"db_dir", dbDir)
 	return files.RemoveChildren(dbDir)
-}
-
-// RemoveOldFiles removes files in the application directory that are older
-// than a week.
-func RemoveOldFiles() error {
-	err := filepath.WalkDir(
-		appDir, func(path string, d os.DirEntry, err error) error {
-			if err != nil {
-				zap.S().Errorw("Failed to access path",
-					"path", path,
-					"error", err)
-				return nil // Continue walking despite errors
-			}
-
-			// Skip directories
-			if d.IsDir() {
-				return nil
-			}
-
-			stat, err := d.Info()
-			if err != nil {
-				zap.S().Errorw("Failed to get file info",
-					"path", path,
-					"error", err)
-				return nil
-			}
-
-			// Remove file if older than retention period
-			if time.Since(stat.ModTime()) > retentionPeriod {
-				err := os.Remove(path)
-				if err == nil {
-					zap.S().Infow("Removed old file",
-						"path", path)
-				} else {
-					zap.S().Errorw("Failed to remove file",
-						"path", path,
-						"error", err)
-				}
-			}
-			return nil
-		})
-	if err != nil {
-		zap.S().Errorw("Failed to walk application directory",
-			"app_dir", appDir,
-			"error", err)
-		return ErrCleanup
-	}
-
-	return nil
 }
