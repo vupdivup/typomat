@@ -21,15 +21,8 @@ import (
 )
 
 var (
-	// dbId is the identifier of the current token database, static throughout
-	// the app lifecycle.
-	dbId string
-
 	// prompts is a channel for delivering generated prompts.
 	prompts chan fetchResult = make(chan fetchResult, promptBuf-1)
-
-	// setuped indicates whether the domain package has been initialized.
-	setuped bool = false
 
 	// progress indicates the progress of directory processing.
 	progress float64
@@ -94,11 +87,7 @@ type fileProcessingResult struct {
 //
 // This function should be called once at application startup.
 // Subsequent calls have no effect.
-func Setup(dirPath string, maxLen int) error {
-	if setuped {
-		return nil
-	}
-
+func Setup(dirPath string, cache bool, maxLen int) error {
 	// Check if directory exists
 	dirExists, err := files.DirExists(dirPath)
 	if err != nil {
@@ -121,7 +110,14 @@ func Setup(dirPath string, maxLen int) error {
 			"error", err)
 		return ErrInvalidDirPath
 	}
-	dbId = absPath
+
+	// Setup database
+	if err := data.Setup(absPath, cache); err != nil {
+		zap.S().Errorw("Failed to setup database",
+			"dir_path", absPath,
+			"error", err)
+		return err
+	}
 
 	// Tokenize directory
 	if err := ProcessDirectory(absPath); err != nil {
@@ -131,7 +127,6 @@ func Setup(dirPath string, maxLen int) error {
 	// Start prompt producer
 	go produce(maxLen)
 
-	setuped = true
 	return nil
 }
 
@@ -204,7 +199,7 @@ func ProcessDirectory(dirPath string) error {
 	removedFiles := make(map[string]data.File)
 
 	// Populate DB file lookup and removed files lookup
-	dbFilesTmp, err := data.GetFiles(dbId)
+	dbFilesTmp, err := data.GetFiles()
 	if err != nil {
 		return err
 	}
@@ -216,23 +211,23 @@ func ProcessDirectory(dirPath string) error {
 	flushTokens := func() error {
 		// Delete tokens of changed files for subsequent re-insertion
 		for _, file := range changedFiles {
-			if err := data.DeleteTokensOfFile(dbId, file.Path); err != nil {
+			if err := data.DeleteTokensOfFile(file.Path); err != nil {
 				return err
 			}
 		}
 
 		// Update changed files
-		if err := data.UpsertFiles(dbId, changedFiles); err != nil {
+		if err := data.UpsertFiles(changedFiles); err != nil {
 			return err
 		}
 
 		// Upload new files
-		if err := data.UpsertFiles(dbId, newFiles); err != nil {
+		if err := data.UpsertFiles(newFiles); err != nil {
 			return err
 		}
 
 		// Flush tokens to database
-		if err := data.UpsertTokens(dbId, tokens); err != nil {
+		if err := data.UpsertTokens(tokens); err != nil {
 			return err
 		}
 
@@ -350,7 +345,7 @@ func ProcessDirectory(dirPath string) error {
 	for _, file := range removedFiles {
 		zap.S().Debugw("Deleting removed file from database",
 			"file_path", file.Path)
-		if err := data.DeleteFile(dbId, file, true); err != nil {
+		if err := data.DeleteFile(file, true); err != nil {
 			return err
 		}
 	}
@@ -470,7 +465,7 @@ func generatePrompt(maxLen int) (string, error) {
 		math.Round(float64(maxLen+1) / float64((minTokenLen + 1))))
 
 	// Get random tokens, sample more than needed to account for length cutoff
-	tokenResults := lazy.Sample(data.IterUniqueTokens(dbId), maxWordsNeeded)
+	tokenResults := lazy.Sample(data.IterUniqueTokens(), maxWordsNeeded)
 	tokens := []string{}
 	for _, tr := range tokenResults {
 		if tr.Err != nil {
@@ -543,4 +538,9 @@ func isTokenEligible(token string) bool {
 func isWordEligible(word string) bool {
 	runes := []rune(word)
 	return len(runes) < maxWordLen
+}
+
+// Teardown cleans up resources used by the domain package.
+func Teardown() error {
+	return data.Teardown()
 }
