@@ -57,6 +57,9 @@ Start a typing session by passing the path to the directory you'd like to practi
 typomat path/to/dir
 ```
 
-> [!NOTE]
-> typomat caches extracted words to a persistent on-disk location. To keep this cache small, avoid passing very large directories like `~` or `/home`. The `--purge` flag can be used to clear the cache if needed.
+For large directories, startup times can be greatly reduced by reusing data across sessions. Pass the `--cache` flag to store results for subsequent runs:
+
+```bash
+typomat --cache path/to/dir
+```
  
