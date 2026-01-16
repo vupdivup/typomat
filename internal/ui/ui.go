@@ -85,8 +85,8 @@ const (
 type model struct {
 	// dirPath is the directory path for prompts.
 	dirPath string
-	// cache indicates whether caching is enabled.
-	cache bool
+	// useCache indicates whether caching is enabled.
+	useCache bool
 
 	// appState is the current application appState.
 	appState AppState
@@ -132,7 +132,7 @@ type loadedMsg struct {
 // prompt.
 func (m model) loadCmd() tea.Cmd {
 	return func() tea.Msg {
-		if err := domain.Setup(m.dirPath, m.cache, maxPromptLen); err != nil {
+		if err := domain.Setup(m.dirPath, m.useCache, maxPromptLen); err != nil {
 			return loadedMsg{prompt: "", err: err}
 		}
 		prompt, err := domain.Prompt()
@@ -141,7 +141,7 @@ func (m model) loadCmd() tea.Cmd {
 }
 
 // initialModel creates the initial TUI model.
-func initialModel(dirPath string, cache bool) model {
+func initialModel(dirPath string, useCache bool) model {
 	help := help.New()
 	help.Styles.ShortKey = accentStyle
 	help.Styles.ShortSeparator = mutedStyle
@@ -150,10 +150,10 @@ func initialModel(dirPath string, cache bool) model {
 		spinner.WithSpinner(spinner.Dot), spinner.WithStyle(accentStyle))
 
 	m := model{
-		dirPath: dirPath,
-		cache:   cache,
-		help:    help,
-		spinner: spinner,
+		dirPath:  dirPath,
+		useCache: useCache,
+		help:     help,
+		spinner:  spinner,
 	}
 
 	return m
