@@ -20,7 +20,10 @@ declarations, string literals and function signatures. These words are then used
 to build short, randomized typing prompts relevant to your codebase.
 
 Start a typing session by passing the path to the directory you'd like to
-practice on.`,
+practice on.
+
+For large directories, startup times can be greatly reduced by reusing data
+across sessions. Pass the --cache flag to store results for subsequent runs.`,
 	Args: cobra.ExactArgs(1),
 	RunE: run,
 }
