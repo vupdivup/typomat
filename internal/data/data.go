@@ -42,7 +42,6 @@ type Token struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 // TokenResult represents the result of a token iteration, containing either
@@ -65,7 +64,6 @@ type File struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 // VersionEquals checks if two File instances refer to the same version of a file.
