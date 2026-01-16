@@ -208,8 +208,8 @@ func GetFiles() ([]File, error) {
 
 // Setup initializes the database connection for the specified directory.
 // If a cached database already exists for the directory, it will be used.
-// Alternatively, if cache is true, the cached database will be used or created.
-func Setup(dirPath string, cache bool) error {
+// Alternatively, if useCache is true, the cached database will be used or created.
+func Setup(dirPath string, useCache bool) error {
 	// Hash the ID to create a filename
 	h := sha256.New()
 	h.Write([]byte(dirPath))
@@ -227,7 +227,7 @@ func Setup(dirPath string, cache bool) error {
 	}
 
 	// If cache is enabled or a cached database exists, use it
-	if cacheExists || cache {
+	if cacheExists || useCache {
 		zap.S().Debugw("Using cached database",
 			"db_id", dirPath,
 			"db_path", cachedDbPath)
@@ -252,26 +252,11 @@ func Setup(dirPath string, cache bool) error {
 		"db_path", dbPath)
 
 	// Perform migrations
-	// Retry once if migration fails
-	for i := range 2 {
-		if err := db.AutoMigrate(&File{}, &Token{}); err == nil {
-			break
-		}
-
+	if err := db.AutoMigrate(&File{}, &Token{}); err != nil {
 		zap.S().Errorw("Failed to migrate or create database schema",
 			"db_id", dirPath,
 			"error", err)
-
-		if i == 1 {
-			return ErrQuery
-		}
-
-		// Try to purge cache and reopen
-		if err := config.PurgeCache(); err != nil {
-			zap.S().Errorw("Failed to purge cache after migration error",
-				"db_id", dirPath,
-				"error", err)
-		}
+		return ErrQuery
 	}
 
 	return nil
