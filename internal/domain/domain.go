@@ -26,6 +26,11 @@ var (
 
 	// progress indicates the progress of directory processing.
 	progress float64
+
+	// ctx is the domain-level context for managing graceful shutdowns.
+	ctx context.Context
+	// cancel is the cancel function for the domain-level context.
+	cancel context.CancelFunc
 )
 
 const (
@@ -80,6 +85,10 @@ type fileProcessingResult struct {
 	tokens []data.Token
 	// err is any error encountered during processing.
 	err error
+}
+
+func init() {
+	ctx, cancel = context.WithCancel(context.Background())
 }
 
 // Setup initializes the domain package with the specified directory path
@@ -263,7 +272,7 @@ func ProcessDirectory(dirPath string) error {
 		"workers", maxWorkers)
 
 	// Process files concurrently
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var wg sync.WaitGroup
 	results := make(chan fileProcessingResult)
@@ -542,5 +551,6 @@ func isWordEligible(word string) bool {
 
 // Teardown cleans up resources used by the domain package.
 func Teardown() error {
+	cancel()
 	return data.Teardown()
 }
