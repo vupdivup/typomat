@@ -274,12 +274,13 @@ func Setup(dirPath string, useCache bool) error {
 
 // Teardown closes the database connection and cleans up temporary files.
 func Teardown() error {
+	// Cancel any ongoing operations
+	cancel()
+	
 	if db == nil {
 		return nil
 	}
 
-	// Cancel any ongoing operations
-	cancel()
 
 	sqlDB, err := db.DB()
 	if err != nil {
