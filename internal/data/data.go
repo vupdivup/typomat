@@ -2,9 +2,11 @@
 package data
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"iter"
+	"math"
 	"path/filepath"
 	"time"
 
@@ -31,6 +33,11 @@ var (
 	dbPath string
 	// dirPath is the directory path associated with the database.
 	dirPath string
+
+	// ctx is the data-level context for graceful shutdowns.
+	ctx context.Context
+	// cancel is the cancel function for the data-level context.
+	cancel context.CancelFunc
 )
 
 // Token represents a token record in the database.
@@ -64,6 +71,10 @@ type File struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+func init() {
+	ctx, cancel = context.WithCancel(context.Background())
 }
 
 // VersionEquals checks if two File instances refer to the same version of a file.
@@ -245,6 +256,7 @@ func Setup(dirPath string, useCache bool) error {
 			"error", err)
 		return ErrConn
 	}
+	db = db.WithContext(ctx)
 	zap.S().Infow("Opened database",
 		"db_id", dirPath,
 		"db_path", dbPath)
@@ -262,9 +274,13 @@ func Setup(dirPath string, useCache bool) error {
 
 // Teardown closes the database connection and cleans up temporary files.
 func Teardown() error {
+	// Cancel any ongoing operations
+	cancel()
+	
 	if db == nil {
 		return nil
 	}
+
 
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -278,11 +294,27 @@ func Teardown() error {
 		return ErrCleanup
 	}
 
-	// Ensure temporary database files are removed
-	if err := files.RemoveChildren(config.TempDbDir()); err != nil {
-		zap.S().Errorw("Failed to remove temporary database files during teardown",
-			"error", err)
-		return ErrCleanup
+	// Attempt to delete temporary database files with retries
+	baseTimeout := time.Millisecond * 50
+	deleteRetries := 4
+	for i := range deleteRetries {
+		err := files.RemoveChildren(config.TempDbDir())
+		if err == nil {
+			zap.S().Infow("Removed temporary database files during teardown",
+				"attempt", i+1)
+			break
+		}
+
+		if i < deleteRetries-1 {
+			zap.S().Warnw("Retrying removal of temporary database files during teardown",
+				"error", err)
+			time.Sleep(time.Duration(math.Exp2(float64(i))) * baseTimeout)
+		} else {
+			zap.S().Errorw("Failed to remove temporary database files during teardown",
+				"error", err)
+			return ErrCleanup
+		}
 	}
+
 	return nil
 }
